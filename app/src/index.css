@@ -322,3 +322,105 @@
     animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
+
+@layer components {
+  /* Mobile first. The thumb lives at the bottom of the screen, so the controls
+     that move you through the flow live there too. */
+  .actionbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+    margin-top: 2rem;
+    background: linear-gradient(to top, var(--void) 62%, transparent);
+  }
+
+  .actionbar .btn {
+    flex: 1 1 auto;
+  }
+
+  .actionbar .btn-quiet {
+    flex: 0 0 auto;
+    min-width: 92px;
+  }
+
+  /* The body preview stays put while the sliders move, because watching the
+     figure answer to the tape is the whole point of the step. */
+  .stickyview {
+    position: sticky;
+    top: 0.5rem;
+    z-index: 5;
+  }
+
+  @media (max-width: 480px) {
+    .wrap {
+      padding: 0 1rem;
+    }
+
+    body {
+      font-size: 16px;
+    }
+
+    .display {
+      font-size: clamp(1.85rem, 8.2vw, 2.4rem);
+      letter-spacing: -0.028em;
+    }
+
+    .lede {
+      font-size: 0.98rem;
+    }
+
+    .card {
+      border-radius: 12px;
+    }
+  }
+
+  /* Every control clears the 44px touch target minimum. */
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  input[type="range"] {
+    height: 44px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    margin-top: -11px;
+    border-radius: 999px;
+    background: var(--cyan);
+    border: 3px solid var(--void);
+    box-shadow: 0 0 14px rgba(75, 227, 208, 0.55);
+    cursor: grab;
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--cyan);
+    border: 3px solid var(--void);
+  }
+}

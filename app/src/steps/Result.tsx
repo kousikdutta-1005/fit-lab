@@ -2,6 +2,7 @@ import { Callout, Kicker } from "../components/ui"
 import { BodyView } from "../components/BodyView"
 import { MuscleView } from "../components/MuscleView"
 import { Gauge, Radar, Timeline } from "../components/viz"
+import { PERCENTILE_SOURCE, context, percentileOf } from "../lib/percentiles"
 import type { Look } from "../components/Character"
 import type { Profile } from "../lib/calc"
 import {
@@ -154,10 +155,12 @@ export function Result({
       </section>
 
       <section style={{ marginTop: "3rem" }}>
-        <h2 className="h2">The numbers, with their error bars</h2>
-        <p style={{ color: "var(--muted)", marginTop: "0.4rem" }}>
-          A tape measure is out by two to five centimetres in ordinary use, which is enough to move you across a
-          line. So these are bands, not verdicts.
+        <h2 className="h2">Where you actually stand</h2>
+        <p style={{ color: "var(--muted)", marginTop: "0.4rem", lineHeight: 1.6 }}>
+          Every number here is placed against {" "}
+          <strong style={{ color: "var(--ink)" }}>71,543 real people</strong>, measured by the US national
+          health survey. A tape is out by two to five centimetres in ordinary use, so the lit band is the
+          honest range rather than a single confident number.
         </p>
         <div style={{ marginTop: "1.2rem", display: "grid", gap: "0.85rem" }}>
           <Gauge
@@ -171,6 +174,10 @@ export function Result({
               { at: t.obese, label: String(t.obese) },
             ]}
             tone={bBand.tone}
+            percentile={(() => {
+              const p = percentileOf("bmi", value, profile.sex, profile.age)
+              return p ? { ...p, note: context("bmi", p.value) } : null
+            })()}
             caption={bBand.note}
           />
           <Gauge
@@ -185,6 +192,10 @@ export function Result({
               { at: 0.6, label: "0.6" },
             ]}
             tone={wBand.tone}
+            percentile={(() => {
+              const p = percentileOf("whtr", ratio, profile.sex, profile.age)
+              return p ? { ...p, note: context("whtr", p.value) } : null
+            })()}
             caption={wBand.note}
           />
           <Gauge
@@ -196,6 +207,10 @@ export function Result({
             max={140}
             stops={[{ at: t.waist, label: `${t.waist}` }]}
             tone={waistRaised(profile.waistCm, t) ? "raised" : "ok"}
+            percentile={(() => {
+              const p = percentileOf("waist", profile.waistCm, profile.sex, profile.age)
+              return p ? { ...p, note: context("waist", p.value) } : null
+            })()}
             caption={`The line that applies to you is ${t.waist}cm. ${t.source}`}
           />
           {bf && (
@@ -240,6 +255,12 @@ export function Result({
             />
           )}
         </div>
+      </section>
+
+      <section style={{ marginTop: "1.4rem" }}>
+        <p style={{ color: "var(--faint)", fontSize: "0.82rem", lineHeight: 1.55, margin: 0 }}>
+          Percentiles from {PERCENTILE_SOURCE.label}. {PERCENTILE_SOURCE.detail}
+        </p>
       </section>
 
       <section style={{ marginTop: "3rem" }}>

@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 import type { Tone } from "../lib/calc"
 
+function ordinal(n: number): string {
+  const t = n % 100
+  if (t >= 11 && t <= 13) return "th"
+  return ["th", "st", "nd", "rd"][n % 10] ?? "th"
+}
+
 const TONE_COLOR: Record<Tone, string> = {
   low: "var(--amber)",
   ok: "var(--lime)",
@@ -57,6 +63,7 @@ export function Gauge({
   caption,
   dp = 1,
   suffix,
+  percentile,
 }: {
   label: string
   value: number
@@ -71,6 +78,8 @@ export function Gauge({
   caption?: string
   dp?: number
   suffix?: string
+  /** Where this value sits in the real population. */
+  percentile?: { value: number; sentence: string; note?: string | null } | null
 }) {
   const pct = (v: number) => Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100))
   const color = TONE_COLOR[tone]
@@ -145,6 +154,31 @@ export function Gauge({
           }}
         />
       </div>
+
+      {percentile && (
+        <div
+          style={{
+            marginTop: "0.95rem",
+            paddingTop: "0.85rem",
+            borderTop: "1px solid var(--edge)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", gap: "0.6rem", flexWrap: "wrap" }}>
+            <span className="mono" style={{ fontSize: "1.5rem", fontWeight: 500, color: "var(--cyan)" }}>
+              {percentile.value}
+              <span style={{ fontSize: "0.55em", color: "var(--muted)" }}>
+                {ordinal(percentile.value)}
+              </span>
+            </span>
+            <span style={{ fontSize: "0.9rem", color: "var(--ink)" }}>{percentile.sentence}</span>
+          </div>
+          {percentile.note && (
+            <p style={{ margin: "0.5rem 0 0", color: "var(--muted)", fontSize: "0.88rem", lineHeight: 1.5 }}>
+              {percentile.note}
+            </p>
+          )}
+        </div>
+      )}
 
       {caption && (
         <p style={{ margin: "1rem 0 0", color: "var(--muted)", fontSize: "0.9rem", lineHeight: 1.55 }}>{caption}</p>

@@ -131,7 +131,7 @@ export function YesNo({
             onClick={() => onChange(o.v)}
             aria-pressed={value === o.v}
             style={{
-              minHeight: 40,
+              minHeight: 44,
               minWidth: 62,
               borderRadius: 999,
               cursor: "pointer",
@@ -277,7 +277,8 @@ export function Slider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        style={{ width: "100%", marginTop: 8, accentColor: "var(--accent)", height: 24 }}
+        className="tap"
+        style={{ width: "100%", marginTop: 6, accentColor: "var(--cyan)" }}
       />
     </label>
   )
@@ -306,8 +307,8 @@ export function Swatches({
             aria-pressed={value === c}
             onClick={() => onChange(c)}
             style={{
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               borderRadius: 999,
               background: c,
               cursor: "pointer",
@@ -343,7 +344,7 @@ export function Pills<T extends string>({
             aria-pressed={value === o.id}
             onClick={() => onChange(o.id)}
             style={{
-              minHeight: 40,
+              minHeight: 44,
               padding: "0 0.9rem",
               borderRadius: 999,
               cursor: "pointer",

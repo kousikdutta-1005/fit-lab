@@ -199,10 +199,7 @@ export default function App() {
           title="Build the one that looks like you."
           lede="Not the one you want to look like. The figure is drawn from your measurements, so it moves when the tape does and not when you would prefer it to."
         >
-          <div
-            className="card scanline"
-            style={{ padding: "0.4rem", marginBottom: "1.5rem", overflow: "hidden", position: "sticky", top: "0.75rem", zIndex: 2 }}
-          >
+          <div className="card scanline stickyview" style={{ padding: "0.4rem", marginBottom: "1.5rem", overflow: "hidden" }}>
             {figure}
             <p
               className="mono"
@@ -559,7 +556,7 @@ export default function App() {
                     aria-pressed={on}
                     onClick={() => setFocus((prev) => (on ? prev.filter((x) => x !== m.id) : [...prev, m.id]))}
                     style={{
-                      minHeight: 40,
+                      minHeight: 44,
                       padding: "0 0.95rem",
                       borderRadius: 999,
                       cursor: "pointer",
@@ -604,8 +601,8 @@ export default function App() {
                         aria-pressed={on}
                         onClick={() => setTipi((prev) => prev.map((x, k) => (k === i ? v : x)))}
                         style={{
-                          minHeight: 40,
-                          minWidth: 40,
+                          minHeight: 44,
+                          minWidth: 44,
                           flex: "1 1 auto",
                           borderRadius: 8,
                           cursor: "pointer",
@@ -686,11 +683,11 @@ function Nav({
   nextLabel?: string
 }) {
   return (
-    <div style={{ display: "flex", gap: "0.6rem", marginTop: "2.5rem" }}>
-      <button className="btn btn-quiet" onClick={onBack}>
+    <div className="actionbar">
+      <button className="btn btn-quiet tap" onClick={onBack}>
         Back
       </button>
-      <button className="btn" onClick={onNext} disabled={nextDisabled}>
+      <button className="btn tap" onClick={onNext} disabled={nextDisabled}>
         {nextLabel}
       </button>
     </div>
