@@ -6,38 +6,43 @@ brand
 
 ## Users
 
-Ordinary people in India who want to get fitter and have no reliable source of truth. Complete beginners who have never trained. People training at home with no equipment. Women who find Indian gyms uncomfortable. People living with type 2 diabetes, hypertension or PCOS. Vegetarians. People in tier-2 and tier-3 cities with no good gym and no competent trainer within reach. Not fitness enthusiasts. They are already served, and served well.
+Young adults, roughly 18 to 30, who want to change how they look and live. They are motivated by dating, by fitness, by adventure, by wanting to walk into a room differently. They are not athletes and not patients. They have absorbed years of contradictory advice from social media and have no accurate picture of their own starting point.
+
+They are used to games and they are suspicious of being sold to. Both of those matter.
 
 ## Product Purpose
 
-Every fitness product in India is paid for by aspiration. cult.fit sells classes. HealthifyMe and Fittr sell coaches. GOQii sells a band. MuscleBlaze and Nutrabay sell powder. The gym trainer earns a small base salary and doubles it on supplement commission. A product whose revenue depends on you believing your goal is achievable cannot tell you the goal is not achievable. The people are not dishonest. The incentive is.
+Every product aimed at this person is paid for by their insecurity. Apps sell subscriptions, coaches sell plans, supplement brands sell powder, and creators sell the body they were born with. A product whose revenue depends on you feeling short of the mark cannot afford to tell you that you are closer than you think, or that the thing you want will take two years, or that the trait you are trying to fix is mostly fine.
 
-A free tool with nothing to sell can say the true thing. fit-lab exists to say it. It reads your real starting point from a tape measure and a few numbers. It tells you whether your goal is achievable and in roughly what timeframe. It flags when you are aiming too high, and it flags when you are aiming too low, which is the more common failure here. Then it prescribes exercises per muscle group, for a gym or for a bare floor.
+fit-lab is free and sells nothing, so it can say all three.
 
-It is an assessment, not a programme. It does not hand you a week-by-week plan to follow. That is a deliberate scope decision. A programme competes with Fitbod and Freeletics on features. An honest assessment competes with nobody, because nobody is doing it. A programme layer can come later, once the assessment has earned trust.
+You build a character that represents you. You check it against a photo of yourself so the character stays honest rather than flattering. Then the product tells you where you actually stand and what would move the needle most: on your body, your health, your diet, your habits, and how you come across to other people. It gives you the highest-leverage next thing in each area, with the evidence and the uncertainty shown.
 
-Success is a person leaving with an accurate picture of where they stand, a goal they can actually reach, and the right exercises to start on.
+It is an assessment, not a programme generator. It does not hand you a week-by-week plan. A programme competes with Fitbod and Freeletics on scheduling features. An honest read on a person competes with nobody. A programme layer may come later, once the assessment has earned it.
 
 ## Brand Personality
 
-Plain-spoken, unflattering, warm underneath. The voice of a knowledgeable friend who respects you enough to tell you the truth and then points you at the right work. It does not hype. It does not shame. There is no countdown timer, no streak to protect, no before-and-after photo. When the answer is fourteen months, it says fourteen months, and then it shows you the work that actually moves it.
+Plain-spoken, unflattering, warm underneath. The voice of a friend who is good at this and respects you enough to tell you the truth. It does not hype and it does not shame. It never implies you are behind. When the honest answer is two years, it says two years. When the honest answer is that a part of you does not need fixing, it says that too.
+
+The game layer carries the feeling. The writing stays flat and adult.
 
 ## Anti-references
 
-Transformation marketing. Before and after photos. Bollywood twelve-week transformation narratives. Supplement upsell. Streak guilt and shame mechanics. Fake urgency. Celebrity endorsement. The words shred, toned, summer body, melt belly fat. Spot-reduction claims. BMI presented as a verdict. Gendered programming, pink dumbbells, "toning" routines for women. Any claim that requires a subscription to be true.
+Transformation marketing. Before and after photos. Supplement upsell. Streak guilt, loss-framing, and any mechanic that punishes a missed day. Fake urgency and countdown timers. Creator and celebrity physiques as the implied target. The words shred, toned, summer body, alpha, glow-up, looksmaxxing. Spot-reduction claims. BMI as a verdict. Ranking users against each other. Personality typing as identity, including MBTI, Enneagram and somatotypes, none of which have empirical support. Any claim that needs a subscription to be true.
 
 ## Design Principles
 
-1. Honesty cuts both ways. Aiming too high and aiming too low are both errors, and the second one is the one nobody names.
-2. Show the reasoning and the weakest part of it. Never a bare number.
-3. The plan must survive a 700 sq ft flat, a family always home, a rental agreement that forbids drilling, and a budget of zero.
-4. Measurement error is real. Show zones and bands, not verdicts.
-5. Safety screening comes before any goal. No plan is issued before the person is screened.
-6. It tells you where you stand and what to do next. It does not tell you what to do every day for twelve weeks.
-7. Nothing is sold, so nothing needs to be flattered. Every line should still be true if the reader never comes back.
+1. Honesty cuts both ways. Aiming too high and aiming too low are both errors, and the second one is rarely named.
+2. The character is a mirror, not a fantasy. If it flatters, the whole product is worthless.
+3. Show the reasoning and the weakest part of it. Never a bare score.
+4. It tells you where you stand and the next real thing to do. Not what to do every day for twelve weeks.
+5. Measurement error is real and photo estimation is not validated. Show zones and bands, never a precise verdict.
+6. Safety screening comes before any goal, and that includes screening for disordered eating, not only cardiac risk.
+7. Take the motive at the door, then give a better one. People arrive for how they look. The evidence says appearance motivation does not sustain, so the product's job is to hand them a reason that does.
+8. Game mechanics may carry progress. They may never manufacture guilt.
 
 ## Accessibility & Inclusion
 
-Meet WCAG on contrast, focus visibility, semantic structure, screen-reader labels and reduced motion. Then go past it, because WCAG is not the binding constraint for these users.
+Meet WCAG on contrast, focus visibility, semantic structure, screen-reader labels and reduced motion. Then go further.
 
-Works on a slow connection and a cheap Android phone. Text-first and light. No login, no account, no onboarding wall. Nothing stored, nothing transmitted, every calculation runs on the device. Readable by someone with low health literacy, in short sentences, without clinical jargon left unexplained. Assumes no equipment, no private space, no room to jump, and no non-vegetarian diet.
+Works on a slow connection and a cheap Android phone. The game layer must degrade to text without losing the assessment. No login, no account. Nothing stored, nothing transmitted, no photo ever leaves the device. Readable by someone with low health literacy. Assumes no equipment, no private space, no gym access and no particular diet. The character creator must represent a wide range of bodies, skin tones and hair without treating any one of them as the default or the goal state.
