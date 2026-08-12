@@ -237,3 +237,128 @@ export function Progress({ step, total }: { step: number; total: number }) {
     </div>
   )
 }
+
+export function Slider({
+  label,
+  hint,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  display,
+}: {
+  label: string
+  hint?: string
+  value: number
+  onChange: (v: number) => void
+  min: number
+  max: number
+  step?: number
+  display?: string
+}) {
+  return (
+    <label style={{ display: "block" }}>
+      <span style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
+        <span style={{ fontWeight: 500 }}>{label}</span>
+        {display && (
+          <span className="tnum" style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
+            {display}
+          </span>
+        )}
+      </span>
+      {hint && (
+        <span style={{ display: "block", color: "var(--muted)", fontSize: "0.86rem", marginTop: 2 }}>{hint}</span>
+      )}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ width: "100%", marginTop: 8, accentColor: "var(--accent)", height: 24 }}
+      />
+    </label>
+  )
+}
+
+export function Swatches({
+  label,
+  colors,
+  value,
+  onChange,
+}: {
+  label: string
+  colors: string[]
+  value: string
+  onChange: (c: string) => void
+}) {
+  return (
+    <div>
+      <span style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{label}</span>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {colors.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-label={c}
+            aria-pressed={value === c}
+            onClick={() => onChange(c)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 999,
+              background: c,
+              cursor: "pointer",
+              border: value === c ? "2px solid var(--accent)" : "1px solid var(--rule)",
+              boxShadow: value === c ? "0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent)" : undefined,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function Pills<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string
+  options: { id: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div>
+      <span style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{label}</span>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {options.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            aria-pressed={value === o.id}
+            onClick={() => onChange(o.id)}
+            style={{
+              minHeight: 40,
+              padding: "0 0.9rem",
+              borderRadius: 999,
+              cursor: "pointer",
+              font: "inherit",
+              border: `1px solid ${value === o.id ? "var(--accent)" : "var(--rule)"}`,
+              background:
+                value === o.id ? "color-mix(in srgb, var(--accent) 12%, var(--card))" : "var(--card)",
+              color: "var(--ink)",
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+

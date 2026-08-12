@@ -1,4 +1,7 @@
-import { Callout, Kicker, Stat } from "../components/ui"
+import { Callout, Kicker } from "../components/ui"
+import { BodyView } from "../components/BodyView"
+import { Gauge, Radar, Timeline } from "../components/viz"
+import type { Look } from "../components/Character"
 import type { Profile } from "../lib/calc"
 import {
   bmi,
@@ -9,10 +12,12 @@ import {
   leanMassKg,
   navyBodyFat,
   round,
+  thresholds,
   waistRaised,
   whtr,
   whtrBand,
 } from "../lib/calc"
+import { PERSONALITY_CAVEAT, scoreTipi } from "../lib/personality"
 import type { Intent } from "../lib/goals"
 import { assess } from "../lib/goals"
 import type { HealthAnswers } from "../lib/screening"
@@ -34,6 +39,10 @@ export function Result({
   intent,
   place,
   focus,
+  look,
+  shoulderRatio,
+  muscle,
+  tipi,
   onRestart,
 }: {
   profile: Profile
@@ -41,6 +50,10 @@ export function Result({
   intent: Intent
   place: Place
   focus: MuscleId[]
+  look: Look
+  shoulderRatio: number
+  muscle: number
+  tipi: number[]
   onRestart: () => void
 }) {
   const scr = screen(profile, health)
@@ -73,8 +86,9 @@ export function Result({
     )
   }
 
+  const t = thresholds(profile.sex, profile.ancestry)
   const value = bmi(profile.weightKg, profile.heightCm)
-  const bBand = bmiBand(value)
+  const bBand = bmiBand(value, t)
   const ratio = whtr(profile.waistCm, profile.heightCm)
   const wBand = whtrBand(ratio)
   const bf = bodyFatRange(profile)
@@ -83,6 +97,7 @@ export function Result({
   const index = lean === null ? null : ffmi(lean, profile.heightCm)
   const ceiling = ffmiCeiling(profile.sex)
   const verdict = assess(profile, intent, bfMid ?? 25)
+  const traits = scoreTipi(tipi)
 
   const verdictColor =
     verdict.verdict === "impossible"
@@ -100,9 +115,24 @@ export function Result({
         Here is where you <em>actually</em> stand.
       </h1>
       <p className="lede">
-        Nothing on this page was sent anywhere. It was all worked out on your phone or laptop, and it
-        disappears when you close the tab.
+        Nothing on this page was sent anywhere. It was all worked out on your own device, and it disappears when
+        you close the tab.
       </p>
+
+      <div className="card scanline" style={{ padding: "0.5rem", marginTop: "2rem", overflow: "hidden" }}>
+        <BodyView
+          build={{
+            sex: profile.sex,
+            heightCm: profile.heightCm,
+            waistCm: profile.waistCm,
+            shoulderRatio,
+            muscle,
+            bodyFat: bfMid ?? 22,
+          }}
+          look={look}
+          height={380}
+        />
+      </div>
 
       {/* Safety first, always, per the design principles. */}
       <section style={{ marginTop: "2.5rem" }}>
@@ -127,41 +157,84 @@ export function Result({
           A tape measure is out by two to five centimetres in ordinary use, which is enough to move you across a
           line. So these are bands, not verdicts.
         </p>
-        <div style={{ marginTop: "1.2rem" }}>
-          <Stat
+        <div style={{ marginTop: "1.2rem", display: "grid", gap: "0.85rem" }}>
+          <Gauge
             label="BMI"
-            value={round(value).toFixed(1)}
-            band={bBand}
-            note={bBand.note}
+            value={round(value)}
+            min={15}
+            max={40}
+            stops={[
+              { at: 18.5, label: "18.5" },
+              { at: t.overweight, label: String(t.overweight) },
+              { at: t.obese, label: String(t.obese) },
+            ]}
+            tone={bBand.tone}
+            caption={bBand.note}
           />
-          <Stat
+          <Gauge
             label="Waist to height"
-            value={round(ratio, 2).toFixed(2)}
-            band={wBand}
-            note={wBand.note}
+            value={round(ratio, 2)}
+            dp={2}
+            min={0.3}
+            max={0.75}
+            stops={[
+              { at: 0.4, label: "0.4" },
+              { at: 0.5, label: "0.5" },
+              { at: 0.6, label: "0.6" },
+            ]}
+            tone={wBand.tone}
+            caption={wBand.note}
           />
-          <Stat
+          <Gauge
             label="Waist"
-            value={`${round(profile.waistCm)} cm`}
-            band={
-              waistRaised(profile.waistCm, profile.sex)
-                ? { label: "Above the Indian threshold", tone: "raised" }
-                : { label: "Below the Indian threshold", tone: "ok" }
-            }
-            note={`For Indian bodies the line is ${profile.sex === "male" ? "90" : "80"}cm, lower than the figures used for European populations.`}
+            value={round(profile.waistCm)}
+            dp={0}
+            suffix="cm"
+            min={55}
+            max={140}
+            stops={[{ at: t.waist, label: `${t.waist}` }]}
+            tone={waistRaised(profile.waistCm, t) ? "raised" : "ok"}
+            caption={`The line that applies to you is ${t.waist}cm. ${t.source}`}
           />
           {bf && (
-            <Stat
+            <Gauge
               label="Body fat, estimated"
-              value={`${round(bf.low).toFixed(0)}–${round(bf.high).toFixed(0)}%`}
-              note="From the US Navy tape formula. It carries roughly four percentage points of error and has never been validated on South Asian bodies. Treat the direction it moves as real and the number itself as rough."
+              value={round((bf.low + bf.high) / 2)}
+              low={bf.low}
+              high={bf.high}
+              dp={0}
+              suffix="%"
+              min={5}
+              max={50}
+              stops={
+                profile.sex === "male"
+                  ? [
+                      { at: 12, label: "lean" },
+                      { at: 20, label: "average" },
+                      { at: 26, label: "raised" },
+                    ]
+                  : [
+                      { at: 20, label: "lean" },
+                      { at: 30, label: "average" },
+                      { at: 36, label: "raised" },
+                    ]
+              }
+              tone="ok"
+              caption="The lit band is the honest range, not a margin of politeness. The US Navy tape formula carries roughly four percentage points of error and has never been validated on South Asian bodies. The direction it moves is real. The number is rough."
             />
           )}
           {index !== null && (
-            <Stat
+            <Gauge
               label="Fat-free mass index"
-              value={round(index).toFixed(1)}
-              note={`Natural trainees cluster below about ${ceiling}. That number rests on 74 athletes measured in 1995, so read it as a signpost rather than a limit.`}
+              value={round(index)}
+              min={14}
+              max={28}
+              stops={[
+                { at: 18, label: "18" },
+                { at: ceiling, label: `${ceiling} ceiling` },
+              ]}
+              tone={index > ceiling ? "raised" : "ok"}
+              caption={`Natural trainees cluster below about ${ceiling}. That figure rests on 74 athletes measured in 1995, so read it as a signpost and not a wall.`}
             />
           )}
         </div>
@@ -181,17 +254,9 @@ export function Result({
           </p>
           <p style={{ margin: "0.7rem 0 0", color: "var(--muted)", lineHeight: 1.65 }}>{verdict.detail}</p>
           {verdict.honestWeeks && (
-            <p
-              className="tnum"
-              style={{
-                margin: "1rem 0 0",
-                paddingTop: "0.9rem",
-                borderTop: "1px solid var(--rule)",
-                fontWeight: 500,
-              }}
-            >
-              The honest timeline: about {verdict.honestWeeks} weeks.
-            </p>
+            <div style={{ marginTop: "1.2rem", paddingTop: "1.1rem", borderTop: "1px solid var(--edge)" }}>
+              <Timeline wanted={intent.weeks} honest={verdict.honestWeeks} />
+            </div>
           )}
         </div>
 
@@ -266,11 +331,51 @@ export function Result({
       </section>
 
       <section style={{ marginTop: "3rem" }}>
+        <h2 className="h2">How you are built on the inside</h2>
+        <p style={{ color: "var(--muted)", marginTop: "0.4rem", lineHeight: 1.6 }}>{PERSONALITY_CAVEAT}</p>
+        <div className="card" style={{ padding: "1.2rem", marginTop: "1.2rem", display: "grid", placeItems: "center" }}>
+          <Radar
+            points={traits.map((tr) => ({
+              label: tr.label === "Conscientiousness" ? "Follow-through" : tr.label,
+              value: tr.score,
+              highlight: tr.trait === "conscientiousness",
+            }))}
+          />
+        </div>
+
+        <div style={{ marginTop: "0.85rem", display: "grid", gap: "0.85rem" }}>
+          {traits.map((tr) => (
+            <div key={tr.trait} className="card" style={{ padding: "1rem 1.1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
+                <span style={{ fontWeight: 600 }}>{tr.label}</span>
+                <span className="tnum" style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+                  {tr.band === "lower" ? "Lower" : tr.band === "higher" ? "Higher" : "Middle"}
+                </span>
+              </div>
+              <div
+                aria-hidden="true"
+                style={{ marginTop: 8, height: 4, borderRadius: 999, background: "var(--rule)", overflow: "hidden" }}
+              >
+                <div
+                  style={{
+                    width: `${((tr.score - 1) / 6) * 100}%`,
+                    height: "100%",
+                    background: tr.trait === "conscientiousness" ? "var(--accent)" : "var(--muted)",
+                  }}
+                />
+              </div>
+              <p style={{ margin: "0.7rem 0 0", color: "var(--muted)", lineHeight: 1.6 }}>{tr.reading}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section style={{ marginTop: "3rem" }}>
         <h2 className="h2">What this is not</h2>
         <p style={{ color: "var(--muted)", marginTop: "0.5rem", lineHeight: 1.65 }}>
           This is an assessment, not a programme. It does not tell you what to lift on Tuesday, and it is not a
-          diagnosis. Every number here is an estimate from population data, and population data is a poor
-          description of any single person. If something feels wrong in your body, a doctor beats a website.
+          diagnosis. Every number here is an estimate built from population data, and population data describes
+          any single person badly. If something feels wrong in your body, a doctor beats a website.
         </p>
       </section>
 

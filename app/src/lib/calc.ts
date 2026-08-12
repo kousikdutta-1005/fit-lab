@@ -8,9 +8,24 @@
 
 export type Sex = "male" | "female"
 
+/**
+ * Ancestry is asked for one reason only: the thresholds genuinely differ, and
+ * applying European cut-offs to everyone is not "global", it is a default
+ * dressed up as neutrality.
+ *
+ * WHO's 2004 expert consultation (Lancet 2004;363(9403):157-163, PMID 14726171)
+ * found that Asian populations carry the risk associated with a BMI of 25-30 in
+ * European populations at a BMI of roughly 23-27.5.
+ *
+ * Ancestry is a crude proxy for a biological difference and the product says so
+ * where it is used. Nobody is required to answer.
+ */
+export type Ancestry = "south-asian" | "east-asian" | "other" | "unsaid"
+
 export type Profile = {
   age: number
   sex: Sex
+  ancestry: Ancestry
   heightCm: number
   weightKg: number
   waistCm: number
@@ -34,29 +49,54 @@ export function bmi(weightKg: number, heightCm: number): number {
   return weightKg / (m * m)
 }
 
+/** True where the WHO Asian-specific cut-offs apply. */
+export function usesAsianCutoffs(ancestry: Ancestry): boolean {
+  return ancestry === "south-asian" || ancestry === "east-asian"
+}
+
+export type Thresholds = {
+  overweight: number
+  obese: number
+  waist: number
+  /** Shown to the reader, so the choice of threshold is never invisible. */
+  source: string
+}
+
+export function thresholds(sex: Sex, ancestry: Ancestry): Thresholds {
+  if (usesAsianCutoffs(ancestry)) {
+    return {
+      overweight: 23,
+      obese: 27.5,
+      waist: sex === "male" ? 90 : 80,
+      source:
+        "WHO Asian cut-offs. Asian bodies carry at a BMI of 23 roughly the risk European bodies carry at 25, so using 25 here would tell you that you are fine when you are not.",
+    }
+  }
+  return {
+    overweight: 25,
+    obese: 30,
+    waist: sex === "male" ? 94 : 80,
+    source:
+      ancestry === "unsaid"
+        ? "Standard international cut-offs, used because you did not say. If you are of Asian ancestry these are too generous by about two points and this reading is flattering you."
+        : "Standard international cut-offs.",
+  }
+}
+
 /**
- * WHO Asian-specific BMI cut-offs, not the 25/30 used for European populations.
- * WHO Expert Consultation, Lancet 2004;363(9403):157-163. PMID 14726171.
+ * BMI banded against the cut-offs that actually apply to this person.
  */
-export function bmiBand(value: number): Band {
+export function bmiBand(value: number, t: Thresholds): Band {
   if (value < 18.5)
     return {
       label: "Below the healthy range",
       tone: "low",
       note: "Being underweight carries its own risks. Here, gaining is the goal, not losing.",
     }
-  if (value < 23)
-    return {
-      label: "Healthy range",
-      tone: "ok",
-      note: "For Asian bodies the healthy ceiling is 23, not 25.",
-    }
-  if (value < 27.5)
-    return {
-      label: "Raised",
-      tone: "raised",
-      note: "India's 2025 guidelines call this Stage 1, when there is no organ or functional effect.",
-    }
+  if (value < t.overweight)
+    return { label: "Healthy range", tone: "ok", note: t.source }
+  if (value < t.obese)
+    return { label: "Raised", tone: "raised", note: t.source }
   return {
     label: "High",
     tone: "high",
@@ -95,11 +135,12 @@ export function whtrBand(value: number): Band {
 }
 
 /**
- * Abdominal obesity thresholds for Indian bodies: 90cm men, 80cm women.
- * IDF South Asia consensus, carried into Misra et al. 2025.
+ * Abdominal obesity threshold, which varies by ancestry as well as by sex.
+ * IDF: 94cm for European men, 90cm for South Asian and Chinese men, 80cm for
+ * women across both.
  */
-export function waistRaised(waistCm: number, sex: Sex): boolean {
-  return waistCm >= (sex === "male" ? 90 : 80)
+export function waistRaised(waistCm: number, t: Thresholds): boolean {
+  return waistCm >= t.waist
 }
 
 /**

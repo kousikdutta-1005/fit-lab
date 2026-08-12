@@ -30,6 +30,31 @@ export type HealthAnswers = {
   pregnant: boolean
   /** Conditions selected for tailoring. */
   conditions: ConditionId[]
+  /** SCOFF answers, in the order given by SCOFF_QUESTIONS. */
+  scoff: boolean[]
+}
+
+/**
+ * SCOFF. Morgan JF, Reid F, Lacey JH. BMJ 1999;319(7223):1467-8.
+ *
+ * Two or more yes answers warrant a proper conversation with a clinician. This
+ * is a screening prompt and not a diagnosis, and its published accuracy comes
+ * from clinical settings, which is not where this runs.
+ *
+ * It is here because pointing appearance-focused body assessment at people aged
+ * 18 to 30 without it would be careless. An eating disorder is the one thing
+ * this product could actively make worse.
+ */
+export const SCOFF_QUESTIONS = [
+  "Do you make yourself sick because you feel uncomfortably full?",
+  "Do you worry you have lost control over how much you eat?",
+  "Have you recently lost more than about 6kg in three months?",
+  "Do you believe yourself to be fat when others say you are thin?",
+  "Would you say that food dominates your life?",
+]
+
+export function scoffScore(answers: boolean[]): number {
+  return answers.filter(Boolean).length
 }
 
 export type ConditionId =
@@ -86,7 +111,30 @@ export function screen(profile: Profile, answers: HealthAnswers): Screen {
     }
   }
 
+  // Disordered eating is handled separately from cardiac risk, because the
+  // right response is different: not "get cleared", but "this product is the
+  // wrong tool for you right now".
+  const scoff = scoffScore(answers.scoff)
+  if (scoff >= 2) {
+    return {
+      kind: "stop",
+      title: "We are not going to give you a body assessment.",
+      body: "Some of your answers match a screening questionnaire used to pick up disordered eating. It is a prompt, not a diagnosis, and a website cannot tell the difference. But a product that hands you a body fat estimate and a target weight is capable of making this worse, so it is not going to.",
+      reasons: [
+        "Please talk to a doctor, a psychologist, or someone you trust about your eating. That is a more useful next step than any number this page could give you.",
+        "None of this means anything is wrong with you or your body. It means a form on a website is the wrong instrument for the question.",
+      ],
+    }
+  }
+
   const notes = conditionNotes(answers)
+
+  if (scoff === 1) {
+    notes.unshift({
+      title: "One thing worth sitting with",
+      body: "One of your answers touched on a difficult relationship with food. That on its own means very little, and most people who answer yes to one are fine. It is worth noticing rather than acting on. If more than one of those questions had felt true, it would be worth talking to someone.",
+    })
+  }
 
   if (answers.pregnant) {
     notes.unshift({
