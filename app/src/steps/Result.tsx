@@ -1,4 +1,4 @@
-import { Callout, Kicker } from "../components/ui"
+import { Callout, Disclosure, Headline, Kicker } from "../components/ui"
 import { BodyView } from "../components/BodyView"
 import { MuscleView } from "../components/MuscleView"
 import { Gauge, Radar, Timeline } from "../components/viz"
@@ -101,13 +101,6 @@ export function Result({
   const verdict = assess(profile, intent, bfMid ?? 25)
   const traits = scoreTipi(tipi)
 
-  const verdictColor =
-    verdict.verdict === "impossible"
-      ? "var(--stop)"
-      : verdict.verdict === "realistic"
-        ? "var(--good)"
-        : "var(--accent)"
-
   const gap = gapFor(place)
 
   return (
@@ -121,7 +114,18 @@ export function Result({
         you close the tab.
       </p>
 
-      <div className="card scanline" style={{ padding: "0.5rem", marginTop: "2rem", overflow: "hidden" }}>
+      <Headline
+        label={VERDICT_LABEL[verdict.verdict]}
+        title={verdict.headline}
+        tone={
+          verdict.verdict === "impossible" ? "stop" : verdict.verdict === "realistic" ? "good" : "warn"
+        }
+        body={verdict.detail}
+      >
+        {verdict.honestWeeks && <Timeline wanted={intent.weeks} honest={verdict.honestWeeks} />}
+      </Headline>
+
+      <div className="card scanline" style={{ padding: "0.5rem", marginTop: "1.5rem", overflow: "hidden" }}>
         <BodyView
           build={{
             sex: profile.sex,
@@ -263,38 +267,17 @@ export function Result({
         </p>
       </section>
 
-      <section style={{ marginTop: "3rem" }}>
-        <h2 className="h2">Your goal, checked</h2>
-        <div
-          className="card"
-          style={{ padding: "1.3rem 1.35rem", marginTop: "1rem", borderLeft: `3px solid ${verdictColor}` }}
-        >
-          <p style={{ margin: 0, fontWeight: 600, color: verdictColor, fontSize: "0.9rem" }}>
-            {VERDICT_LABEL[verdict.verdict]}
-          </p>
-          <p className="h2" style={{ margin: "0.5rem 0 0" }}>
-            {verdict.headline}
-          </p>
-          <p style={{ margin: "0.7rem 0 0", color: "var(--muted)", lineHeight: 1.65 }}>{verdict.detail}</p>
-          {verdict.honestWeeks && (
-            <div style={{ marginTop: "1.2rem", paddingTop: "1.1rem", borderTop: "1px solid var(--edge)" }}>
-              <Timeline wanted={intent.weeks} honest={verdict.honestWeeks} />
-            </div>
-          )}
-        </div>
+      {verdict.flags.length > 0 && (
+        <section style={{ marginTop: "2.2rem", display: "grid", gap: "0.85rem" }}>
+          {verdict.flags.map((f) => (
+            <Callout key={f.title} tone={f.severity === "warn" ? "warn" : "note"} title={f.title}>
+              <p style={{ margin: 0 }}>{f.body}</p>
+            </Callout>
+          ))}
+        </section>
+      )}
 
-        {verdict.flags.length > 0 && (
-          <div style={{ display: "grid", gap: "0.85rem", marginTop: "1rem" }}>
-            {verdict.flags.map((f) => (
-              <Callout key={f.title} tone={f.severity === "warn" ? "warn" : "note"} title={f.title}>
-                <p style={{ margin: 0 }}>{f.body}</p>
-              </Callout>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section style={{ marginTop: "3rem" }}>
+      <section style={{ marginTop: "2.2rem" }}>
         <h2 className="h2">What to actually do</h2>
         <p style={{ color: "var(--muted)", marginTop: "0.4rem" }}>
           These are not ranked by muscle activation studies. Activation is not growth. They are ranked on whether
@@ -369,8 +352,8 @@ export function Result({
         )}
       </section>
 
-      <section style={{ marginTop: "3rem" }}>
-        <h2 className="h2">How you are built on the inside</h2>
+      <section style={{ marginTop: "2.2rem" }}>
+        <Disclosure title="How you are built on the inside" hint="Ten questions, read as a sketch">
         <p style={{ color: "var(--muted)", marginTop: "0.4rem", lineHeight: 1.6 }}>{PERSONALITY_CAVEAT}</p>
         <div className="card" style={{ padding: "1.2rem", marginTop: "1.2rem", display: "grid", placeItems: "center" }}>
           <Radar
@@ -407,6 +390,7 @@ export function Result({
             </div>
           ))}
         </div>
+        </Disclosure>
       </section>
 
       <section style={{ marginTop: "3rem" }}>

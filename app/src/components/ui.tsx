@@ -363,3 +363,100 @@ export function Pills<T extends string>({
   )
 }
 
+
+/**
+ * Progressive disclosure. The result page is long because the honest answer is
+ * long, but a phone should not demand nine screens of scrolling before the
+ * reader knows what they were told.
+ *
+ * Uses a native details element so it works without JavaScript, is keyboard
+ * operable for free, and is announced correctly by screen readers.
+ */
+export function Disclosure({
+  title,
+  hint,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  hint?: string
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  return (
+    <details className="card" open={defaultOpen} style={{ padding: 0, overflow: "hidden" }}>
+      <summary
+        className="tap"
+        style={{
+          listStyle: "none",
+          cursor: "pointer",
+          padding: "1rem 1.15rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "1rem",
+        }}
+      >
+        <span>
+          <span className="h2" style={{ fontSize: "1.05rem", display: "block" }}>
+            {title}
+          </span>
+          {hint && (
+            <span style={{ color: "var(--muted)", fontSize: "0.88rem", display: "block", marginTop: 2 }}>
+              {hint}
+            </span>
+          )}
+        </span>
+        <span
+          aria-hidden="true"
+          className="mono"
+          style={{ color: "var(--cyan)", fontSize: "0.72rem", letterSpacing: "0.14em", flex: "0 0 auto" }}
+        >
+          OPEN
+        </span>
+      </summary>
+      <div style={{ padding: "0 1.15rem 1.25rem" }}>{children}</div>
+    </details>
+  )
+}
+
+/** The one thing the reader should see before anything else. */
+export function Headline({
+  label,
+  title,
+  body,
+  tone,
+  children,
+}: {
+  label: string
+  title: string
+  body: string
+  tone: "good" | "warn" | "stop"
+  children?: ReactNode
+}) {
+  const color = tone === "stop" ? "var(--rose)" : tone === "warn" ? "var(--amber)" : "var(--lime)"
+  return (
+    <div
+      className="card"
+      style={{ padding: "1.35rem 1.3rem", borderLeft: `3px solid ${color}`, marginTop: "1.5rem" }}
+    >
+      <p
+        className="mono"
+        style={{
+          margin: 0,
+          color,
+          fontSize: "0.68rem",
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </p>
+      <p className="h2" style={{ margin: "0.6rem 0 0" }}>
+        {title}
+      </p>
+      <p style={{ margin: "0.7rem 0 0", color: "var(--muted)", lineHeight: 1.65 }}>{body}</p>
+      {children}
+    </div>
+  )
+}
