@@ -1,5 +1,6 @@
 import { Callout, Kicker } from "../components/ui"
 import { BodyView } from "../components/BodyView"
+import { MuscleView } from "../components/MuscleView"
 import { Gauge, Radar, Timeline } from "../components/viz"
 import type { Look } from "../components/Character"
 import type { Profile } from "../lib/calc"
@@ -278,6 +279,22 @@ export function Result({
           you can keep making them harder, whether they load the muscle in a stretched position, whether they are
           safe on your own, and whether you can get at the equipment.
         </p>
+
+        <div className="card" style={{ padding: "0.4rem", marginTop: "1.4rem", overflow: "hidden" }}>
+          <MuscleView active={focus} height={320} />
+          <p
+            className="mono"
+            style={{
+              margin: "0 0 0.5rem 0.9rem",
+              fontSize: "0.6rem",
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: "var(--faint)",
+            }}
+          >
+            Lit in red: what you picked. Open 3D Model of Human Anatomy, CC BY-SA 4.0
+          </p>
+        </div>
 
         <div style={{ marginTop: "1.4rem", display: "grid", gap: "1.4rem" }}>
           {focus.map((id) => {

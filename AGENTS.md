@@ -93,3 +93,27 @@ checking PubMed caught it.
 
 Where evidence is contested, say it is contested. The product's only asset is
 that it does not flatter, and that includes not flattering itself.
+
+### Anatomy model
+
+The muscle anatomy comes from the **Open 3D Model of Human Anatomy**
+(anatomytool.org/open3dmodel), CC BY-SA 4.0, built by anatomists at Leiden UMC,
+UMC Utrecht, Maastricht UMC, KU Leuven KULAK, Amsterdam UMC, Radboud UMC and
+Gent. This is the rule working as intended: a free, expert-made asset instead of
+anything hand-modelled.
+
+It is used for the **muscle and exercise layer only**, never as the body. Its
+geometry is fixed, so it cannot answer to anyone's measurements, and it is a
+male-only model with no skin. Using it as "you" would reproduce exactly the flaw
+that ruled out Ready Player Me.
+
+Obligations, since ShareAlike is not optional:
+
+- The derived file `app/public/anatomy/muscles.glb` is itself CC BY-SA 4.0.
+- Attribution appears next to the model in the interface, in
+  `app/public/anatomy/LICENSE.txt`, and in the README.
+- Changes are documented in that LICENSE.txt, as the licence requires.
+
+Rebuild it with `node scripts/build-anatomy.mjs <upper-limb.glb> <lower-limb.glb>`
+using the source files from anatomytool.org. The sources are ~12MB and are not
+committed; the built asset is 0.57MB, roughly 454KB over the wire.

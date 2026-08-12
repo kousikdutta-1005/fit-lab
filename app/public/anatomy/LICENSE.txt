@@ -1,0 +1,28 @@
+muscles.glb
+===========
+
+This file is a derivative of the Open 3D Model of Human Anatomy.
+
+Source:  https://anatomytool.org/open3dmodel
+Licence: Creative Commons Attribution-ShareAlike 4.0 International
+         https://creativecommons.org/licenses/by-sa/4.0/
+
+Created by the departments of anatomy of Leiden University Medical Center,
+University Medical Center Utrecht, Maastricht University Medical Center and
+University of Leuven (KULAK), with anatomists of Amsterdam University Medical
+Center (VUmc), Radboud University Medical Center Nijmegen and University of
+Gent. Initial grant from the Dutch Ministry of Education, Culture and Science.
+The model builds on the earlier BodyParts3D and Z-Anatomy models.
+
+Changes made in this derivative
+-------------------------------
+
+- Kept only the muscles this product names. Bursae, tendon sheaths, ligaments,
+  nerves and vessels were removed.
+- Removed all textures. The material is generated at runtime.
+- Decimated the geometry with meshoptimizer, from roughly 2.5 million triangles
+  across the two source files to about 32,000, so it loads on a cheap phone.
+- Renamed nodes with a muscle-group prefix so the app can select a group.
+
+Because the source is ShareAlike, this derived file is released under the same
+licence: CC BY-SA 4.0. The build script is at app/scripts/build-anatomy.mjs.

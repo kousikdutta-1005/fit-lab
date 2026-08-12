@@ -4,6 +4,7 @@ import { Choice, Kicker, Number_, Pills, Progress, Slider, Swatches, YesNo } fro
 import { HAIRS, SKINS, defaultShoulderRatio } from "./components/Character"
 import type { Look } from "./components/Character"
 import { BodyView } from "./components/BodyView"
+import { MuscleView } from "./components/MuscleView"
 import { PhotoCheck } from "./components/PhotoCheck"
 import type { Ancestry, Profile, Sex } from "./lib/calc"
 import { navyBodyFat } from "./lib/calc"
@@ -519,6 +520,21 @@ export default function App() {
           </Group>
 
           <Group label="Which parts do you want exercises for">
+            <div className="card" style={{ padding: "0.4rem", marginBottom: "0.6rem", overflow: "hidden" }}>
+              <MuscleView active={focus} height={300} />
+              <p
+                className="mono"
+                style={{
+                  margin: "0 0 0.5rem 0.9rem",
+                  fontSize: "0.6rem",
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  color: "var(--faint)",
+                }}
+              >
+                Open 3D Model of Human Anatomy · CC BY-SA 4.0
+              </p>
+            </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
               {MUSCLES.map((m) => {
                 const on = focus.includes(m.id)
