@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Newsreader", ui-serif, Georgia, Cambria, serif;
+
+  --color-paper: #faf8f5;
+  --color-ink: #16130f;
+  --color-muted: #5c554c;
+  --color-rule: #e2dbd1;
+  --color-raised: #8a5a12;
+  --color-high: #8f2f22;
+  --color-good: #2c5f3f;
+}
+
+@layer base {
+  :root {
+    --paper: #faf8f5;
+    --card: #ffffff;
+    --ink: #16130f;
+    --muted: #5c554c;
+    --rule: #e4ddd3;
+    --accent: #8a5a12;
+    --stop: #8f2f22;
+    --good: #2c5f3f;
+    --shadow: 0 1px 2px rgb(22 19 15 / 0.05), 0 8px 24px -12px rgb(22 19 15 / 0.12);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #121110;
+      --card: #1b1917;
+      --ink: #f2ede6;
+      --muted: #a49a8d;
+      --rule: #302c28;
+      --accent: #d9a441;
+      --stop: #e08573;
+      --good: #7fb894;
+      --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+    }
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .wrap {
+    width: 100%;
+    max-width: 42rem;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+
+  .display {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.021em;
+    line-height: 1.14;
+    font-size: clamp(2rem, 6vw, 3.1rem);
+  }
+
+  .display em {
+    font-style: italic;
+  }
+
+  .h2 {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    font-size: clamp(1.4rem, 3.4vw, 1.85rem);
+  }
+
+  .kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .lede {
+    font-size: 1.06rem;
+    color: var(--muted);
+    line-height: 1.62;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .field {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 0.7rem 0.85rem;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    transition: border-color 0.15s ease;
+  }
+
+  .field:hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--rule));
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 46px;
+    padding: 0 1.3rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: var(--ink);
+    color: var(--paper);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+
+  .btn-quiet {
+    background: transparent;
+    color: var(--muted);
+    border-color: var(--rule);
+  }
+
+  .choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.8rem 0.95rem;
+    border-radius: 11px;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .choice:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--rule));
+  }
+
+  .choice[aria-pressed="true"],
+  .choice[data-on="true"] {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--card));
+  }
+
+  .rule {
+    height: 1px;
+    background: var(--rule);
+    border: 0;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -1,0 +1,162 @@
+/**
+ * Safety screening, run before any goal is assessed.
+ *
+ * Built on the PAR-Q+ framework and the 2015 ACSM screening revision. The 2015
+ * revision matters: the old blanket "consult your physician before any exercise"
+ * line referred so many people that it deterred exercise, and deterring exercise
+ * costs more health than it saves. So this screens for the things that genuinely
+ * warrant a doctor, and otherwise gets out of the way.
+ *
+ * This is not a diagnosis and it is not a clinical instrument.
+ */
+
+import type { Profile } from "./calc"
+import { bmi, round } from "./calc"
+
+export type HealthAnswers = {
+  /** Chest pain at rest or on light activity. */
+  chestPain: boolean
+  /** Fainting or dizziness causing loss of balance in the last 12 months. */
+  faintness: boolean
+  /** A doctor has said to only do medically supervised activity. */
+  supervisedOnly: boolean
+  /** Diagnosed heart condition or high blood pressure. */
+  heartOrBp: boolean
+  /** Any other diagnosed chronic condition. */
+  chronic: boolean
+  /** Bone, joint or soft tissue problem that activity could worsen. */
+  jointProblem: boolean
+  /** Currently pregnant or within 12 weeks postpartum. */
+  pregnant: boolean
+  /** Conditions selected for tailoring. */
+  conditions: ConditionId[]
+}
+
+export type ConditionId =
+  | "type-2-diabetes"
+  | "hypertension"
+  | "pcos"
+  | "hypothyroid"
+  | "knee-pain"
+  | "back-pain"
+  | "asthma"
+
+export const CONDITIONS: { id: ConditionId; label: string }[] = [
+  { id: "type-2-diabetes", label: "Type 2 diabetes" },
+  { id: "hypertension", label: "High blood pressure" },
+  { id: "pcos", label: "PCOS" },
+  { id: "hypothyroid", label: "Hypothyroidism" },
+  { id: "knee-pain", label: "Knee pain or arthritis" },
+  { id: "back-pain", label: "Low back pain" },
+  { id: "asthma", label: "Asthma" },
+]
+
+export type Screen =
+  | { kind: "stop"; title: string; body: string; reasons: string[] }
+  | { kind: "caution"; title: string; body: string; notes: Note[] }
+  | { kind: "clear"; title: string; body: string; notes: Note[] }
+
+export type Note = { title: string; body: string }
+
+export function screen(profile: Profile, answers: HealthAnswers): Screen {
+  const reasons: string[] = []
+
+  if (answers.chestPain)
+    reasons.push("Chest pain at rest or during light activity needs to be looked at before you train, not after.")
+  if (answers.faintness)
+    reasons.push("Losing balance from dizziness, or losing consciousness, in the last year.")
+  if (answers.supervisedOnly)
+    reasons.push("A doctor has already told you to only do supervised activity.")
+
+  const value = bmi(profile.weightKg, profile.heightCm)
+  if (value < 16.5)
+    reasons.push(
+      `A BMI of ${round(value)} is in the severely underweight range, where training advice is the wrong tool and medical advice is the right one.`,
+    )
+
+  if (profile.age < 16)
+    reasons.push("Under-16s should get training guidance from a doctor or a qualified coach who can see them in person.")
+
+  if (reasons.length > 0) {
+    return {
+      kind: "stop",
+      title: "We are going to stop here.",
+      body: "This is the one place fit-lab will not hand you a plan. Not as a formality, and not to protect ourselves. These are the specific things that should be checked by a doctor before you start training, and a website cannot check them.",
+      reasons,
+    }
+  }
+
+  const notes = conditionNotes(answers)
+
+  if (answers.pregnant) {
+    notes.unshift({
+      title: "Pregnant or recently postpartum",
+      body: "Exercise during an uncomplicated pregnancy is recommended, not merely allowed, and the WHO asks for the same 150 minutes a week. But the exceptions are specific and only your doctor knows which apply to you. Take this assessment to them rather than acting on it alone.",
+    })
+  }
+
+  if (answers.heartOrBp || answers.chronic || answers.jointProblem || answers.pregnant) {
+    return {
+      kind: "caution",
+      title: "You can train. Read these first.",
+      body: "Nothing here stops you, and being told to sit still would be worse for you than training sensibly. But some of what follows should be adjusted, and one conversation with your doctor is worth more than anything on this page.",
+      notes,
+    }
+  }
+
+  return {
+    kind: "clear",
+    title: "Nothing here needs a doctor first.",
+    body: "You answered no to everything that would warrant medical clearance under the current screening guidance. You can start. The old advice to check with a doctor before any exercise at all is not what the evidence supports, and it keeps more people on the sofa than it keeps safe.",
+    notes,
+  }
+}
+
+function conditionNotes(answers: HealthAnswers): Note[] {
+  const out: Note[] = []
+  const has = (c: ConditionId) => answers.conditions.includes(c)
+
+  if (has("type-2-diabetes"))
+    out.push({
+      title: "Type 2 diabetes",
+      body: "Resistance training and walking each improve blood sugar control on their own, and together they do more than either alone. Two things to know: check your glucose before you train, and if you take insulin or a sulfonylurea, carry something sweet. If you have been told you have eye changes from diabetes, ask your doctor before doing anything heavy or straining.",
+    })
+
+  if (has("hypertension"))
+    out.push({
+      title: "High blood pressure",
+      body: "Training lowers blood pressure over time, so this is a reason to train rather than a reason not to. Breathe out as you push and avoid holding your breath under a heavy weight, which spikes pressure sharply. If your readings are very high and not yet controlled, get them controlled first.",
+    })
+
+  if (has("pcos"))
+    out.push({
+      title: "PCOS",
+      body: "Resistance training improves insulin sensitivity, which is the mechanism that matters most in PCOS. Weight loss is often slower than the calculators suggest and that is the condition, not a failure of discipline. Strength gains are a better measure of progress here than the scale.",
+    })
+
+  if (has("hypothyroid"))
+    out.push({
+      title: "Hypothyroidism",
+      body: "If your thyroid is treated and stable, train normally. If it is not yet stable, fatigue and slow progress are the condition talking, and no training plan will out-argue it.",
+    })
+
+  if (has("knee-pain"))
+    out.push({
+      title: "Knee pain",
+      body: "Legs still need training, and stronger legs usually mean less knee pain, not more. Work in the range that does not hurt and widen it as it improves. Sitting still is the option that makes this worse.",
+    })
+
+  if (has("back-pain"))
+    out.push({
+      title: "Low back pain",
+      body: "Most back pain improves with movement and gets worse with rest. Start light, keep the load close to your body, and build up. If pain runs down your leg, or you have numbness or weakness, that is a doctor's question first.",
+    })
+
+  if (has("asthma"))
+    out.push({
+      title: "Asthma",
+      body: "Keep your reliever inhaler with you, warm up for longer than feels necessary, and be careful with cold or polluted air. On days when the air quality is bad, train indoors.",
+    })
+
+  return out
+}
