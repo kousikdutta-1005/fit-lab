@@ -1,6 +1,6 @@
 # fit-lab
 
-fit-lab is a free web tool that reads your real starting point, tells you whether the goal you have in mind is achievable and roughly how long it would take, and gives you exercises per muscle group for a gym or a bare floor. It is built for people in India who have no reliable source of truth about their own bodies. It runs entirely in your browser.
+fit-lab is a free web tool that reads your real starting point, tells you whether the goal you have in mind is achievable and roughly how long it would take, and gives you the right exercises per muscle group for a gym or a bare floor. It is built for people in India who have no reliable source of truth about their own bodies. It runs entirely in your browser.
 
 ## Why it is free, and why that is the point
 
@@ -17,7 +17,13 @@ So the honest position is unoccupied, and it is unoccupied because it cannot be 
 1. **Read the starting point.** Height, weight, age, sex, waist, neck, hip. A tape measure. No smart scale, no wearable, no login.
 2. **Screen for safety.** Based on the PAR-Q+ framework and the post-2015 ACSM algorithm. The 2015 revision deliberately refers fewer people to a doctor than the old blanket "consult your physician" line, because that line deters exercise and that costs more health than it saves.
 3. **Reality-check the goal, in both directions.** Too high is the obvious failure. Too low is the common one. Light dumbbells, twenty comfortable reps, the same routine for six months, no result. Sets stopped five or more reps short of failure produce substantially blunted growth, and roughly ten hard sets per muscle per week is the threshold below which the work barely counts. Nobody tells people this. They are told to be patient instead.
-4. **Prescribe exercises per muscle group**, for a gym or for a bare floor, with the ranking criteria stated on the page.
+4. **Give the right exercises per muscle group**, for a gym or for a bare floor, with the ranking criteria stated on the page. Exercises, not a schedule.
+
+## What it is not
+
+fit-lab is an assessment, not a programme generator. It will not hand you a week-by-week plan to follow, and it will not tell you what to lift on Tuesday.
+
+That is a decision, not a gap. The moment this becomes a programme it competes with Fitbod and Freeletics on features, and that is a race about scheduling logic, not about honesty. As an assessment it competes with nobody, because nobody is doing it. A programme layer may come later, once the assessment has earned enough trust to deserve one. For v1 it is deliberately out of scope rather than merely unbuilt.
 
 ## What it refuses to do
 
