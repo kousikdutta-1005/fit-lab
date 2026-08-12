@@ -22,29 +22,38 @@ function Muscles({ active }: { active: MuscleId[] }) {
   const spin = useRef<THREE.Group>(null)
 
   const materials = useMemo(() => {
-    const on = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#e8474f"),
-      emissive: new THREE.Color("#ff3547"),
-      emissiveIntensity: 0.62,
-      roughness: 0.4,
-      metalness: 0.04,
+    // Flesh rather than plastic: physical material with a little sheen and
+    // clearcoat reads closer to an ecorche than flat shading does.
+    const on = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color("#c02a33"),
+      emissive: new THREE.Color("#7d0f18"),
+      emissiveIntensity: 0.55,
+      roughness: 0.52,
+      metalness: 0,
+      clearcoat: 0.45,
+      clearcoatRoughness: 0.6,
+      sheen: 0.6,
+      sheenColor: new THREE.Color("#ff8a7a"),
+      sheenRoughness: 0.7,
       side: THREE.DoubleSide,
     })
-    const off = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#33565f"),
-      emissive: new THREE.Color("#10383d"),
-      emissiveIntensity: 0.25,
-      roughness: 0.66,
-      metalness: 0.04,
+    const off = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color("#7d5f5c"),
+      emissive: new THREE.Color("#221a1c"),
+      emissiveIntensity: 0.3,
+      roughness: 0.72,
+      metalness: 0,
+      sheen: 0.35,
+      sheenColor: new THREE.Color("#c39b93"),
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.42,
       side: THREE.DoubleSide,
     })
     // Bone sits behind everything and is never the subject.
     const bone = new THREE.MeshStandardMaterial({
-      color: new THREE.Color("#8e9bb0"),
-      emissive: new THREE.Color("#1a2634"),
-      emissiveIntensity: 0.2,
+      color: new THREE.Color("#d9d2c4"),
+      emissive: new THREE.Color("#2a2a26"),
+      emissiveIntensity: 0.16,
       roughness: 0.85,
       metalness: 0.02,
       transparent: true,
@@ -113,11 +122,14 @@ export default function MuscleScene({ active, height }: { active: MuscleId[]; he
   return (
     <div style={{ height, width: "100%" }}>
       <Canvas dpr={[1, 1.7]} camera={{ position: [0, 0, 3.9], fov: 42 }} gl={{ antialias: true, alpha: true }}>
-        <ambientLight intensity={1.1} />
-        <hemisphereLight args={["#bfefff", "#0a1418", 0.7]} />
-        <directionalLight position={[2.5, 3, 3]} intensity={2.4} />
-        <directionalLight position={[-3, 1, -2]} intensity={1.1} color="#4be3d0" />
-        <pointLight position={[0, -1.5, 2.5]} intensity={6} color="#8a7bff" distance={10} />
+        <ambientLight intensity={0.55} />
+        <hemisphereLight args={["#ffe9dd", "#0a1418", 0.55]} />
+        {/* Key from the front right, cool rim from behind left: standard
+            sculpture lighting, which is what makes musculature legible. */}
+        <directionalLight position={[3, 3.5, 4]} intensity={2.6} color="#fff2e8" />
+        <directionalLight position={[-3.5, 1.5, -2.5]} intensity={2.2} color="#4be3d0" />
+        <pointLight position={[0, -1.2, 3]} intensity={9} color="#ff7a6b" distance={11} />
+        <pointLight position={[0, 2.4, -2.5]} intensity={7} color="#8a7bff" distance={11} />
         <Muscles active={active} />
       </Canvas>
     </div>

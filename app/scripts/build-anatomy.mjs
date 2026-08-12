@@ -191,7 +191,7 @@ async function main() {
 
   // Bones are dim context and never inspected closely, so they take a far
   // heavier cut than the muscles, which are the thing being looked at.
-  await simplifyScoped(merged, (name) => !name.startsWith("context__"), 0.7, 0.002)
+  await simplifyScoped(merged, (name) => !name.startsWith("context__"), 0.95, 0.0004)
   await simplifyScoped(merged, (name) => name.startsWith("context__"), 0.05, 0.02)
 
   await merged.transform(prune())

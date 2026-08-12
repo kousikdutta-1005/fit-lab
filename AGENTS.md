@@ -33,7 +33,8 @@ Two questions to answer before writing the code:
 | Disordered eating screen | SCOFF, Morgan et al. 1999 | Standard instrument. Never invent a screening tool. |
 | Readiness screening | PAR-Q+ framework, ACSM 2015 algorithm | Established clinical screening. |
 | Body fat estimate | US Navy tape formula | Free, published, and its error is documented, which matters more than its accuracy. |
-| 3D avatar | Built here, deliberately | See below. |
+| 3D avatar | CC-BY base mesh, deformed here | See below. |
+| Anatomy | Open 3D Model of Human Anatomy, CC BY-SA | Expert-made, free. |
 
 ### Why the avatar is hand-built
 
@@ -58,14 +59,20 @@ real measurements. Nothing provides all three.
   anthropometric dimensions. This is the strongest free option and it remains
   open, but it needs a Blender authoring step to bake blendshapes into a GLB.
 
-So the body is generated from the measurements directly. Rendering still uses
-free MIT libraries: `three`, `@react-three/fiber`, `@react-three/drei`. We are
-not writing a renderer, only the part that no free service will do honestly.
+So the split is: take a free human mesh, write only the part nobody will do
+honestly. The base mesh is **"Male base mesh with muscle detail" by
+C.J..Goldman, CC-BY-4.0** (commercial use allowed, credit required), and the
+measurement-driven deformation is written here. Rendering uses the MIT
+libraries `three`, `@react-three/fiber` and `@react-three/drei`.
 
-The form it takes is a holographic scan rather than a realistic human, which is
-both more honest about what it is and a better fit for the product. It is a
-readout of a body, and it cannot flatter, because the silhouette is a
-consequence of the numbers.
+A first attempt generated the whole body procedurally and it read as a
+mannequin, which is worth recording: parametric primitives do not make a body.
+
+How the deformation stays honest: `scripts/build-body.mjs` normalises the mesh
+to stature fractions and measures its own half-width at 64 height slices. At
+runtime every horizontal slice is scaled by the ratio of the user's real girth
+to the mesh's girth at that height. Nobody can be rendered narrower than their
+tape says. Chest is inferred rather than measured, and the interface says so.
 
 ## The rules the product cannot break
 

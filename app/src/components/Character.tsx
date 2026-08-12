@@ -22,6 +22,8 @@ export const HAIRS = ["#0f0d0c", "#2b1b12", "#4a3728", "#7a5c3e", "#a9a9a9", "#8
 export type Build = {
   sex: "male" | "female"
   heightCm: number
+  /** Hip circumference in cm. 0 when not measured. */
+  hipCm: number
   /** Waist circumference in cm. */
   waistCm: number
   /** Shoulder breadth as a multiple of waist. Higher reads as broader. */

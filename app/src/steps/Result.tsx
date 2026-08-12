@@ -126,6 +126,7 @@ export function Result({
             sex: profile.sex,
             heightCm: profile.heightCm,
             waistCm: profile.waistCm,
+            hipCm: profile.sex === "female" ? profile.hipCm : 0,
             shoulderRatio,
             muscle,
             bodyFat: bfMid ?? 22,

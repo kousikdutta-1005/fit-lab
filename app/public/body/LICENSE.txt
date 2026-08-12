@@ -1,0 +1,25 @@
+base.glb
+========
+
+Derived from "Male base mesh with muscle detail" by C.J..Goldman.
+https://sketchfab.com/3d-models/male-base-mesh-with-muscle-detail-244061a0323b4d2e9c60d9aba374c937
+
+Licence: CC-BY-4.0  http://creativecommons.org/licenses/by/4.0/
+Author must be credited. Commercial use is allowed.
+
+Required credit:
+This work is based on "Male base mesh with muscle detail"
+(https://sketchfab.com/3d-models/male-base-mesh-with-muscle-detail-244061a0323b4d2e9c60d9aba374c937)
+by C.J..Goldman (https://sketchfab.com/C.J..Goldman)
+licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Changes made
+------------
+- Removed all textures. The material is generated at runtime.
+- Reoriented from Z-up to Y-up, centred horizontally, feet placed at y=0 and
+  height normalised to 1, so the runtime can work in stature fractions.
+- Measured the mesh's half-width and half-depth at 64 height slices. That
+  profile is written to src/data/body-profile.json and is what the runtime
+  deformation scales relative to.
+
+Rebuild with: node scripts/build-body.mjs <scene.gltf>

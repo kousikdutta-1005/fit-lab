@@ -183,7 +183,7 @@ export default function App() {
   const index = FLOW.indexOf(stage)
   const figure = (
     <BodyView
-      build={{ sex, heightCm, waistCm, shoulderRatio, muscle, bodyFat }}
+      build={{ sex, heightCm, waistCm, hipCm: sex === "female" ? hipCm : 0, shoulderRatio, muscle, bodyFat }}
       look={look}
       height={340}
     />
@@ -702,6 +702,7 @@ function Intro({ onStart }: { onStart: () => void }) {
     sex: "male" as const,
     heightCm: 175,
     waistCm: 88,
+    hipCm: 0,
     shoulderRatio: 1.46,
     muscle: 0.5,
     bodyFat: 20,

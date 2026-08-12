@@ -1,250 +1,239 @@
-import { useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
+import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import type { Build } from "./Character"
+import profile from "../data/body-profile.json"
 
 /**
- * The body, as a scan.
+ * The body: a real human mesh, deformed by the user's own measurements.
  *
- * No avatar service will do this honestly. The free ones (Ready Player Me,
- * DiceBear, Avataaars) do not vary body shape by measurement at all, and the
- * one that genuinely does, SMPL via Meshcapade, is a paid B2B service whose
- * underlying model is licensed for non-commercial research only. So the
- * silhouette here is generated directly from the tape.
+ * No avatar API would do this honestly. The free ones do not vary body shape by
+ * measurement at all, and the one that genuinely does, SMPL via Meshcapade, is
+ * paid and licensed for non-commercial research only. So the base mesh is
+ * "Male base mesh with muscle detail" by C.J..Goldman, CC-BY-4.0, and the
+ * deformation is written here.
  *
- * Rendering is done with free MIT libraries. Only the part nobody will do
- * honestly is written here.
- *
- * It is deliberately a hologram rather than a person. It is a readout of a
- * body, it says so, and it cannot flatter: every radius below is a
- * consequence of a number the user entered.
+ * The honesty is structural rather than promised. The mesh's own width at every
+ * height is measured at build time; at runtime each horizontal slice is scaled
+ * by the ratio between the user's real girth and the mesh's girth at that
+ * height. Nobody can be rendered narrower than their tape says they are.
  */
 
-const SEGMENTS = 30
+const MODEL = `${import.meta.env.BASE_URL}body/base.glb`
+const FIGURE = 2.5
+const SLICES = profile.slices
+const DEPTH = 0.72
 
-/** Circumference in cm to a radius in scene units. */
-function radiusOf(cm: number): number {
-  return (cm / (2 * Math.PI)) * 0.03
+/** Landmarks as a fraction of stature. */
+const L = { hip: 0.485, waist: 0.6, chest: 0.72, shoulder: 0.82 }
+
+/**
+ * A circumference in cm becomes a half-width as a fraction of stature. The
+ * cross-section is treated as an ellipse rather than a circle: sweeping a
+ * circle makes waist, chest and hip come out nearly equal and a body read as a
+ * tube.
+ */
+function halfWidthOf(cm: number, heightCm: number): number {
+  return cm / (Math.PI * (1 + DEPTH) * 1.02) / heightCm
+}
+
+function baseAt(table: number[], frac: number): number {
+  const i = Math.min(SLICES - 1, Math.max(0, Math.round(frac * SLICES)))
+  return table[i] || 0.0001
 }
 
 /**
- * A vertical profile of the torso, swept into a solid. The proportions come
- * from the measurements; only the smoothing between them is invented.
+ * The scale-per-height curve. Anchored at the measured landmarks and relaxed
+ * back to the base mesh at the crown and the floor, so a wide waist does not
+ * also produce a wide skull.
  */
-function torsoProfile(build: Build): THREE.Vector2[] {
-  const { sex, waistCm, shoulderRatio, muscle, bodyFat } = build
+function scaleCurve(build: Build): Float32Array {
+  const { waistCm, hipCm, heightCm, sex, shoulderRatio, muscle, bodyFat } = build
+  const torso = profile.torsoHalfWidth
 
-  const waist = radiusOf(waistCm)
-  const soft = Math.min(1, Math.max(0, (bodyFat - 12) / 28))
+  const waistTarget = halfWidthOf(waistCm, heightCm)
+  const hipTarget =
+    hipCm > 0 ? halfWidthOf(hipCm, heightCm) : waistTarget * (sex === "female" ? 1.14 : 1.02)
 
-  const shoulder = waist * shoulderRatio * 0.92
-  const chest = waist * (sex === "female" ? 1.04 : 1.11) + muscle * 0.055
-  const hip = waist * (sex === "female" ? 1.15 : 1.03)
-  const belly = waist * (1 + soft * 0.17)
+  // Chest is not measured, so it is inferred from the waist and from how much
+  // muscle the person reports. Inferred, and labelled as such in the interface.
+  const chestTarget = waistTarget * (sex === "female" ? 1.08 : 1.14) + muscle * 0.012
+  const shoulderTarget = chestTarget * (shoulderRatio / (sex === "male" ? 1.42 : 1.28))
 
-  const pts: [number, number][] = [
-    [hip * 0.8, 0.0],
-    [hip * 0.98, 0.09],
-    [hip, 0.22],
-    [belly, 0.4],
-    [waist * (1 + soft * 0.05), 0.55],
-    [chest * 0.95, 0.74],
-    [chest, 0.9],
-    [shoulder, 1.06],
-    [shoulder * 0.66, 1.18],
-    [shoulder * 0.26, 1.24],
+  const anchors: [number, number][] = [
+    [0.0, 1],
+    [0.2, 1 + (muscle - 0.35) * 0.12 + Math.max(0, (bodyFat - 18) / 100) * 0.35],
+    [L.hip, hipTarget / baseAt(torso, L.hip)],
+    [L.waist, waistTarget / baseAt(torso, L.waist)],
+    [L.chest, chestTarget / baseAt(torso, L.chest)],
+    [L.shoulder, shoulderTarget / baseAt(torso, L.shoulder)],
+    [0.9, 1],
+    [1.0, 1],
   ]
 
-  return pts.map(([x, y]) => new THREE.Vector2(Math.max(0.02, x), y))
+  const curve = new Float32Array(SLICES + 1)
+  for (let i = 0; i <= SLICES; i++) {
+    const y = i / SLICES
+    let a = anchors[0]
+    let b = anchors[anchors.length - 1]
+    for (let k = 0; k < anchors.length - 1; k++) {
+      if (y >= anchors[k][0] && y <= anchors[k + 1][0]) {
+        a = anchors[k]
+        b = anchors[k + 1]
+        break
+      }
+    }
+    const span = b[0] - a[0]
+    const t = span <= 0 ? 0 : (y - a[0]) / span
+    const smooth = t * t * (3 - 2 * t)
+    curve[i] = THREE.MathUtils.clamp(a[1] + (b[1] - a[1]) * smooth, 0.55, 2.2)
+  }
+  return curve
 }
 
-function useLimbTransform(
-  from: [number, number, number],
-  to: [number, number, number],
-) {
-  return useMemo(() => {
-    const a = new THREE.Vector3(...from)
-    const b = new THREE.Vector3(...to)
-    const dir = new THREE.Vector3().subVectors(b, a)
-    const length = dir.length()
-    const position = new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5)
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      dir.clone().normalize(),
-    )
-    return { position, quaternion, length }
-  }, [from, to])
+function sampleCurve(curve: Float32Array, y: number): number {
+  const f = THREE.MathUtils.clamp(y, 0, 1) * SLICES
+  const i = Math.floor(f)
+  const t = f - i
+  const a = curve[Math.min(SLICES, i)]
+  const b = curve[Math.min(SLICES, i + 1)]
+  return a + (b - a) * t
 }
 
-function Limb({
-  from,
-  to,
-  radius,
-  materials,
-}: {
-  from: [number, number, number]
-  to: [number, number, number]
-  radius: number
-  materials: { solid: THREE.Material; wire: THREE.Material }
-}) {
-  const { position, quaternion, length } = useLimbTransform(from, to)
-  const geom = useMemo(
-    () => new THREE.CapsuleGeometry(radius, Math.max(0.02, length - radius * 2), 4, SEGMENTS),
-    [radius, length],
+function Body({ build, reduced }: { build: Build; reduced: boolean }) {
+  const { scene } = useGLTF(MODEL)
+  const spin = useRef<THREE.Group>(null)
+
+  const material = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color("#0e4a52"),
+        emissive: new THREE.Color("#1bb9a8"),
+        emissiveIntensity: 0.26,
+        roughness: 0.3,
+        metalness: 0.05,
+        transmission: 0.3,
+        thickness: 1.1,
+        transparent: true,
+        opacity: 0.92,
+        clearcoat: 0.85,
+        clearcoatRoughness: 0.3,
+        side: THREE.DoubleSide,
+      }),
+    [],
   )
-  return (
-    <group position={position} quaternion={quaternion}>
-      <mesh geometry={geom} material={materials.solid} />
-      <mesh geometry={geom} material={materials.wire} scale={1.02} />
-    </group>
-  )
-}
 
-function Figure({ build, reduced }: { build: Build; reduced: boolean }) {
-  const group = useRef<THREE.Group>(null)
-  const profile = useMemo(() => torsoProfile(build), [build])
-  const torso = useMemo(() => new THREE.LatheGeometry(profile, SEGMENTS), [profile])
-
-  const { sex, waistCm, shoulderRatio, muscle, bodyFat } = build
-  const waist = radiusOf(waistCm)
-  const shoulder = waist * shoulderRatio * 0.92
-  const fatPad = Math.max(0, (bodyFat - 15) / 100)
-  const armR = 0.036 + muscle * 0.024 + fatPad * 0.04
-  const legR = 0.055 + muscle * 0.034 + fatPad * 0.05
-  const hipX = waist * (sex === "female" ? 0.5 : 0.44)
-
-  const materials = useMemo(() => {
-    const solid = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color("#0e3d44"),
-      emissive: new THREE.Color("#1ea99a"),
-      emissiveIntensity: 0.5,
-      roughness: 0.28,
-      metalness: 0.1,
-      transmission: 0.62,
-      thickness: 1.1,
-      transparent: true,
-      opacity: 0.62,
-      clearcoat: 0.7,
+  /** Clone once, keeping pristine positions to deform from every time. */
+  const { root, targets } = useMemo(() => {
+    const clone = scene.clone(true)
+    const targets: { geom: THREE.BufferGeometry; base: Float32Array }[] = []
+    clone.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      mesh.geometry = mesh.geometry.clone()
+      mesh.material = material
+      const pos = mesh.geometry.getAttribute("position") as THREE.BufferAttribute
+      targets.push({ geom: mesh.geometry, base: Float32Array.from(pos.array as Float32Array) })
     })
-    const wire = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#5cf0dc"),
-      wireframe: true,
-      transparent: true,
-      opacity: 0.22,
+    // A faint wire shell over the skin: this is a scan of a body, and it should
+    // look like one rather than like a game character.
+    const shells: THREE.Mesh[] = []
+    clone.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh || (mesh as THREE.Mesh & { userData: { shell?: boolean } }).userData.shell) return
+      const shell = new THREE.Mesh(
+        mesh.geometry,
+        new THREE.MeshBasicMaterial({
+          color: new THREE.Color("#8bffee"),
+          wireframe: true,
+          transparent: true,
+          opacity: 0.09,
+        }),
+      )
+      shell.userData.shell = true
+      shell.scale.setScalar(1.004)
+      shells.push(shell)
     })
-    return { solid, wire }
-  }, [])
+    for (const shell of shells) clone.add(shell)
+
+    return { root: clone, targets }
+  }, [scene, material])
+
+  useEffect(() => {
+    const curve = scaleCurve(build)
+    const limb = 1 + (build.muscle - 0.35) * 0.22 + Math.max(0, (build.bodyFat - 18) / 100) * 0.5
+
+    for (const { geom, base } of targets) {
+      const pos = geom.getAttribute("position") as THREE.BufferAttribute
+      const arr = pos.array as Float32Array
+      for (let i = 0; i < base.length; i += 3) {
+        const x = base[i]
+        const y = base[i + 1]
+        const z = base[i + 2]
+        const s = sampleCurve(curve, y)
+        // Past the edge of the torso a vertex belongs to an arm or a leg, where
+        // girth answers to muscle and fat rather than to the waist tape.
+        const outer = Math.min(1, Math.max(0, (Math.abs(x) - 0.075) / 0.06))
+        const f = s * (1 - outer) + limb * outer
+        arr[i] = x * f
+        arr[i + 1] = y
+        arr[i + 2] = z * f
+      }
+      pos.needsUpdate = true
+      geom.computeVertexNormals()
+      geom.computeBoundingSphere()
+    }
+  }, [build, targets])
 
   useFrame((state) => {
-    if (!group.current || reduced) return
-    const t = state.clock.elapsedTime
-    group.current.rotation.y = Math.sin(t * 0.2) * 0.5
-    group.current.position.y = -1.05 + Math.sin(t * 0.7) * 0.012
+    if (!spin.current || reduced) return
+    spin.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.2) * 0.6
   })
 
   return (
-    <group ref={group} position={[0, -1.05, 0]}>
-      <mesh geometry={torso} material={materials.solid} position={[0, 0.86, 0]} />
-      <mesh geometry={torso} material={materials.wire} position={[0, 0.86, 0]} scale={1.012} />
-
-      <mesh material={materials.solid} position={[0, 2.24, 0]}>
-        <sphereGeometry args={[0.132, SEGMENTS, 20]} />
-      </mesh>
-      <mesh material={materials.wire} position={[0, 2.24, 0]} scale={1.02}>
-        <sphereGeometry args={[0.132, SEGMENTS, 20]} />
-      </mesh>
-      <mesh material={materials.solid} position={[0, 2.08, 0]}>
-        <cylinderGeometry args={[0.048, 0.058, 0.11, 14]} />
-      </mesh>
-
-      <Limb from={[-shoulder * 0.95, 1.97, 0]} to={[-shoulder * 1.18, 1.44, 0.02]} radius={armR} materials={materials} />
-      <Limb from={[-shoulder * 1.18, 1.44, 0.02]} to={[-shoulder * 1.22, 0.95, 0.05]} radius={armR * 0.84} materials={materials} />
-      <Limb from={[shoulder * 0.95, 1.97, 0]} to={[shoulder * 1.18, 1.44, 0.02]} radius={armR} materials={materials} />
-      <Limb from={[shoulder * 1.18, 1.44, 0.02]} to={[shoulder * 1.22, 0.95, 0.05]} radius={armR * 0.84} materials={materials} />
-
-      <Limb from={[-hipX, 0.84, 0]} to={[-hipX * 0.92, 0.44, 0]} radius={legR} materials={materials} />
-      <Limb from={[-hipX * 0.92, 0.44, 0]} to={[-hipX * 0.88, 0.04, 0]} radius={legR * 0.7} materials={materials} />
-      <Limb from={[hipX, 0.84, 0]} to={[hipX * 0.92, 0.44, 0]} radius={legR} materials={materials} />
-      <Limb from={[hipX * 0.92, 0.44, 0]} to={[hipX * 0.88, 0.04, 0]} radius={legR * 0.7} materials={materials} />
+    <group ref={spin}>
+      <group position={[0, -FIGURE / 2, 0]} scale={FIGURE}>
+        <primitive object={root} />
+      </group>
     </group>
   )
 }
 
-/** The sweep that makes it read as a scan in progress. */
 function ScanRing() {
   const ref = useRef<THREE.Mesh>(null)
   useFrame((state) => {
     if (!ref.current) return
-    const p = (state.clock.elapsedTime * 0.26) % 1
-    ref.current.position.y = -1.05 + p * 2.5
+    const p = (state.clock.elapsedTime * 0.24) % 1
+    ref.current.position.y = -FIGURE / 2 + p * FIGURE
     const m = ref.current.material as THREE.MeshBasicMaterial
-    m.opacity = 0.42 * Math.sin(p * Math.PI)
-    const s = 1 + Math.sin(p * Math.PI) * 0.06
-    ref.current.scale.setScalar(s)
+    m.opacity = 0.5 * Math.sin(p * Math.PI)
   })
   return (
     <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[0.34, 0.62, 72]} />
-      <meshBasicMaterial color="#5cf0dc" transparent opacity={0} side={THREE.DoubleSide} />
+      <ringGeometry args={[0.26, 0.5, 72]} />
+      <meshBasicMaterial color="#7bffe9" transparent opacity={0} side={THREE.DoubleSide} />
     </mesh>
   )
 }
 
-/** The plinth the figure stands on. */
-function Base() {
+function Plinth() {
   return (
-    <group position={[0, -1.06, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.52, 0.56, 72]} />
-        <meshBasicMaterial color="#4be3d0" transparent opacity={0.5} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.72, 0.735, 72]} />
-        <meshBasicMaterial color="#4be3d0" transparent opacity={0.22} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.002, 0]}>
-        <circleGeometry args={[0.56, 72]} />
-        <meshBasicMaterial color="#0a2b2f" transparent opacity={0.5} side={THREE.DoubleSide} />
-      </mesh>
+    <group position={[0, -FIGURE / 2 + 0.004, 0]}>
+      {[
+        [0.4, 0.43, 0.55],
+        [0.6, 0.615, 0.22],
+      ].map(([a, b, o]) => (
+        <mesh key={a} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[a, b, 72]} />
+          <meshBasicMaterial color="#4be3d0" transparent opacity={o} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
     </group>
   )
 }
 
-function Motes() {
-  const ref = useRef<THREE.Points>(null)
-  const geom = useMemo(() => {
-    const n = 120
-    const pos = new Float32Array(n * 3)
-    for (let i = 0; i < n; i++) {
-      const r = 0.7 + Math.random() * 1.5
-      const a = Math.random() * Math.PI * 2
-      pos[i * 3] = Math.cos(a) * r
-      pos[i * 3 + 1] = Math.random() * 2.6 - 1.1
-      pos[i * 3 + 2] = Math.sin(a) * r
-    }
-    const g = new THREE.BufferGeometry()
-    g.setAttribute("position", new THREE.BufferAttribute(pos, 3))
-    return g
-  }, [])
-
-  useFrame((state) => {
-    if (ref.current) ref.current.rotation.y = state.clock.elapsedTime * 0.045
-  })
-
-  return (
-    <points ref={ref} geometry={geom}>
-      <pointsMaterial size={0.016} color="#4be3d0" transparent opacity={0.5} sizeAttenuation />
-    </points>
-  )
-}
-
-export default function Character3D({
-  build,
-  height = 400,
-}: {
-  build: Build
-  height?: number
-}) {
+export default function Character3D({ build, height = 400 }: { build: Build; height?: number }) {
   const reduced =
     typeof window !== "undefined" &&
     !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -253,19 +242,21 @@ export default function Character3D({
     <div style={{ height, width: "100%" }}>
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ position: [0, 0.28, 3.5], fov: 40 }}
+        camera={{ position: [0, 0.02, 4.45], fov: 42 }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       >
-        <ambientLight intensity={0.7} />
-        <pointLight position={[2.5, 2.5, 2.5]} intensity={18} color="#8affe9" distance={12} />
-        <pointLight position={[-2.5, 1, -1.5]} intensity={14} color="#8a7bff" distance={12} />
-        <pointLight position={[0, -1, 2]} intensity={6} color="#4be3d0" distance={8} />
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[2.5, 3, 3]} intensity={1.7} color="#dffff9" />
+        <pointLight position={[2.6, 1.6, 2.4]} intensity={16} color="#8affe9" distance={12} />
+        <pointLight position={[-2.6, 1.2, -1.6]} intensity={13} color="#8a7bff" distance={12} />
+        <pointLight position={[0, -0.8, 2.2]} intensity={5} color="#4be3d0" distance={8} />
 
-        <Figure build={build} reduced={reduced} />
-        <Base />
+        <Body build={build} reduced={reduced} />
+        <Plinth />
         {!reduced && <ScanRing />}
-        {!reduced && <Motes />}
       </Canvas>
     </div>
   )
 }
+
+useGLTF.preload(MODEL)
