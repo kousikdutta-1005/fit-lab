@@ -56,6 +56,23 @@ const GROUPS = {
 
 const EXCLUDE = /bursa|bursae|sheath|artery|vein|nerve|ligament|syndesmosis|cord|tendon/i
 
+/**
+ * Bones are kept as context, dimmed at runtime. Without them the muscles float
+ * in the dark with nothing to hang off, which reads as broken rather than as
+ * anatomy. Skull and hands and feet are dropped: high polygon counts, and they
+ * carry none of the muscles this product names.
+ */
+const CONTEXT = [
+  /vertebra/i, /^Sacrum/i, /^Coccyx/i, /rib/i, /^Sternum/i, /^Clavicle/i, /^Scapula/i,
+  /^Humerus/i, /^Radius/i, /^Ulna/i, /^Femur/i, /^Tibia/i, /^Fibula/i, /^Patella/i,
+  /^Hip bone/i, /^Ilium/i, /^Ischium/i, /^Pubis/i,
+  /^Skull/i, /^Cranium/i, /^Mandible/i, /^Maxilla/i, /^Frontal bone/i, /^Parietal bone/i,
+  /^Occipital bone/i, /^Temporal bone/i, /^Sphenoid/i, /^Ethmoid/i, /^Zygomatic/i,
+  /^Nasal bone/i, /^Lacrimal/i, /^Palatine/i, /^Vomer/i, /^Atlas/i, /^Axis/i,
+  /^Calcaneus/i, /^Talus/i,
+]
+const CONTEXT_EXCLUDE = /tooth|teeth|dental|phalanx|metacarpal|metatarsal|carpal|tarsal|navicular|cuboid|cuneiform|hyoid/i
+
 function baseName(name) {
   return name.replace(/\.[rl]$/i, "").trim()
 }
@@ -70,10 +87,39 @@ function groupFor(rawName) {
   return null
 }
 
+function isContext(rawName) {
+  if (!rawName) return false
+  if (CONTEXT_EXCLUDE.test(rawName)) return false
+  const name = baseName(rawName)
+  return CONTEXT.some((p) => p.test(name))
+}
+
+/**
+ * Run the simplifier over only the meshes whose owning node matches, by
+ * temporarily detaching the rest. gltf-transform's simplify() is document-wide.
+ */
+async function simplifyScoped(doc, match, ratio, error) {
+  const detached = []
+  for (const node of doc.getRoot().listNodes()) {
+    const mesh = node.getMesh()
+    if (!mesh) continue
+    if (!match(node.getName())) {
+      detached.push([node, mesh])
+      node.setMesh(null)
+    }
+  }
+  await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio, error, cleanup: false }))
+  for (const [node, mesh] of detached) node.setMesh(mesh)
+}
+
 async function main() {
-  const sources = process.argv.slice(2)
-  if (sources.length === 0) {
-    console.error("Pass one or more source .glb files.")
+  const args = process.argv.slice(2)
+  const split = args.indexOf("--context")
+  const muscleSources = split === -1 ? args : args.slice(0, split)
+  const contextSources = split === -1 ? [] : args.slice(split + 1)
+
+  if (muscleSources.length === 0) {
+    console.error("Usage: node scripts/build-anatomy.mjs <muscle.glb...> [--context <skeleton.glb...>]")
     process.exit(1)
   }
 
@@ -89,16 +135,22 @@ async function main() {
 
   let merged = null
   const found = new Map()
+  const sources = [...muscleSources, ...contextSources]
 
   for (const src of sources) {
     const doc = await io.read(src)
     let kept = 0
 
     for (const node of doc.getRoot().listNodes()) {
-      const group = groupFor(node.getName())
+      const raw = node.getName()
+      const group = groupFor(raw)
       if (group && node.getMesh()) {
-        node.setName(`${group}__${baseName(node.getName())}`)
+        node.setName(`${group}__${baseName(raw)}`)
         found.set(group, (found.get(group) ?? 0) + 1)
+        kept++
+      } else if (node.getMesh() && isContext(raw)) {
+        node.setName(`context__${baseName(raw)}`)
+        found.set("context", (found.get("context") ?? 0) + 1)
         kept++
       } else if (node.getMesh()) {
         node.setMesh(null)
@@ -135,13 +187,14 @@ async function main() {
     extra.dispose()
   }
 
-  await merged.transform(
-    prune(),
-    dedup(),
-    weld(),
-    simplify({ simplifier: MeshoptSimplifier, ratio: Number(process.env.RATIO ?? 0.7), error: 0.002 }),
-    prune(),
-  )
+  await merged.transform(prune(), dedup(), weld())
+
+  // Bones are dim context and never inspected closely, so they take a far
+  // heavier cut than the muscles, which are the thing being looked at.
+  await simplifyScoped(merged, (name) => !name.startsWith("context__"), 0.7, 0.002)
+  await simplifyScoped(merged, (name) => name.startsWith("context__"), 0.05, 0.02)
+
+  await merged.transform(prune())
 
   let tris = 0
   for (const mesh of merged.getRoot().listMeshes()) {

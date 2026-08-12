@@ -55,7 +55,10 @@ export function MuscleView({
   }, [])
 
   return (
-    <div ref={ref} style={{ minHeight: height, position: "relative" }}>
+    <div
+      ref={ref}
+      style={{ minHeight: height, position: "relative", maxWidth: 460, margin: "0 auto" }}
+    >
       {show ? (
         <Suspense fallback={<Placeholder height={height} />}>
           <MuscleScene active={active} height={height} />

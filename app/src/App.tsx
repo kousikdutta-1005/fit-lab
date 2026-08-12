@@ -53,12 +53,26 @@ const ANCESTRIES: { id: Ancestry; label: string }[] = [
   { id: "unsaid", label: "Rather not say" },
 ]
 
+const STAGES: Stage[] = ["intro", "character", "photo", "health", "goal", "personality", "result"]
+
+/**
+ * A development-only shortcut so a given step can be opened directly, without
+ * walking the whole flow to look at one screen. Stripped from production
+ * builds by the DEV guard, and it prefills only what that step needs to render.
+ */
+function devJump(): Stage | null {
+  if (!import.meta.env.DEV || typeof window === "undefined") return null
+  const asked = new URLSearchParams(window.location.search).get("stage")
+  return asked && (STAGES as string[]).includes(asked) ? (asked as Stage) : null
+}
+
 export default function App() {
-  const [stage, setStage] = useState<Stage>("intro")
+  const jump = devJump()
+  const [stage, setStage] = useState<Stage>(jump ?? "intro")
 
   const [sex, setSex] = useState<Sex>("male")
   const [ancestry, setAncestry] = useState<Ancestry>("unsaid")
-  const [age, setAge] = useState<number | "">("")
+  const [age, setAge] = useState<number | "">(jump ? 27 : "")
   const [heightCm, setHeight] = useState(170)
   const [weightKg, setWeight] = useState(70)
   const [waistCm, setWaist] = useState(84)
@@ -82,18 +96,18 @@ export default function App() {
   const [jointProblem, setJoint] = useState<boolean | null>(null)
   const [pregnant, setPregnant] = useState<boolean | null>(null)
   const [conditions, setConditions] = useState<ConditionId[]>([])
-  const [scoff, setScoff] = useState<(boolean | null)[]>(Array(SCOFF_QUESTIONS.length).fill(null))
+  const [scoff, setScoff] = useState<(boolean | null)[]>(Array(SCOFF_QUESTIONS.length).fill(jump ? false : null))
 
-  const [kind, setKind] = useState<GoalKind | null>(null)
-  const [targetWeightKg, setTarget] = useState<number | "">("")
+  const [kind, setKind] = useState<GoalKind | null>(jump ? "lose-fat" : null)
+  const [targetWeightKg, setTarget] = useState<number | "">(jump ? 64 : "")
   const [weeks, setWeeks] = useState<number | "">(12)
-  const [trainingAge, setTrainingAge] = useState<TrainingAge | null>(null)
+  const [trainingAge, setTrainingAge] = useState<TrainingAge | null>(jump ? "none" : null)
   const [daysPerWeek, setDays] = useState<number | "">(3)
-  const [effort, setEffort] = useState<Intent["effort"] | null>(null)
-  const [place, setPlace] = useState<Place | null>(null)
+  const [effort, setEffort] = useState<Intent["effort"] | null>(jump ? "comfortable" : null)
+  const [place, setPlace] = useState<Place | null>(jump ? "gym" : null)
   const [focus, setFocus] = useState<MuscleId[]>(["chest", "back", "quads"])
 
-  const [tipi, setTipi] = useState<number[]>(Array(TIPI.length).fill(0))
+  const [tipi, setTipi] = useState<number[]>(Array(TIPI.length).fill(jump ? 5 : 0))
 
   const profile: Profile | null = useMemo(() => {
     if (age === "") return null
@@ -521,7 +535,7 @@ export default function App() {
 
           <Group label="Which parts do you want exercises for">
             <div className="card" style={{ padding: "0.4rem", marginBottom: "0.6rem", overflow: "hidden" }}>
-              <MuscleView active={focus} height={300} />
+              <MuscleView active={focus} height={360} />
               <p
                 className="mono"
                 style={{
