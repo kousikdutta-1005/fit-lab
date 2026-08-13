@@ -1,0 +1,27 @@
+{
+  "name": "fit-lab",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5190",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.112.0",
+    "@react-three/fiber": "^8.17.10",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "^0.175.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/three": "^0.175.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}
