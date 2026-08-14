@@ -208,11 +208,13 @@ The anatomy source is ShareAlike, so the derived file carries the same licence.
 Attribution and the list of changes are in `app/public/anatomy/LICENSE.txt` and
 `app/public/body/LICENSE.txt`.
 
-Both anatomy sources are far too heavy to ship as they come: the two limb models
-alone are 12MB and about 2.5 million triangles. `scripts/build-anatomy.mjs` keeps
-only the 36 structures behind the nine muscle groups this product names, drops
-every texture, and decimates bone far harder than muscle, since bone is never the
-subject. 12MB becomes 0.74MB.
+The anatomy sources are far too heavy to ship as they come. The build combines
+the upper limb, lower limb, trunk and skeleton sources, keeps only structures
+behind the ten groups the product names, drops every texture, and decimates bone
+far harder than muscle, since bone is never the subject. Core uses the source
+model's rectus abdominis, internal and external obliques, and transversus
+abdominis. `npm run validate:anatomy` prevents a recommendation group from
+silently disappearing from the rendered anatomy.
 
 ## Data
 
@@ -235,6 +237,7 @@ cd app
 npm install
 npm run dev      # http://localhost:5173
 npm test         # the body model, checked against the real meshes
+npm run validate:anatomy
 npm run build
 ```
 
@@ -248,7 +251,7 @@ npx obj2gltf -i <female.obj> -o <female.glb> --binary
 node scripts/build-body.mjs <female.glb> --name female      # female asset + profile
 node scripts/build-body-profile.mjs                         # re-measure both committed meshes
 node scripts/validate-body-assets.mjs                       # assets, and profiles against them
-node scripts/build-anatomy.mjs <upper> <lower> --context <skeleton>
+node scripts/build-anatomy.mjs <upper> <lower> --core <trunk> --context <skeleton>
 ```
 
 The source meshes are large and are deliberately not committed, so

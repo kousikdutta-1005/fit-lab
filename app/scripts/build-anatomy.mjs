@@ -20,6 +20,7 @@
  *
  * Usage:
  *   node scripts/build-anatomy.mjs <upper-limb.glb> <lower-limb.glb>
+ *     --core <trunk.glb> [--context <skeleton.glb>]
  */
 
 import { NodeIO } from "@gltf-transform/core"
@@ -52,6 +53,12 @@ const GROUPS = {
   hamstrings: [/head of biceps femoris$/i, /^Semitendinosus muscle$/i, /^Semimembranosus muscle$/i],
   glutes: [/^Gluteus (maximus|medius|minimus) muscle$/i],
   calves: [/head of gastrocnemius$/i, /^Soleus muscle$/i],
+  core: [
+    /^Rectus abdominal muscle$/i,
+    /^External abdominal oblique muscle$/i,
+    /^Internal abdominal oblique muscle$/i,
+    /^Transverse abdominal muscle$/i,
+  ],
 }
 
 const EXCLUDE = /bursa|bursae|sheath|artery|vein|nerve|ligament|syndesmosis|cord|tendon/i
@@ -114,12 +121,20 @@ async function simplifyScoped(doc, match, ratio, error) {
 
 async function main() {
   const args = process.argv.slice(2)
-  const split = args.indexOf("--context")
-  const muscleSources = split === -1 ? args : args.slice(0, split)
-  const contextSources = split === -1 ? [] : args.slice(split + 1)
+  const coreSplit = args.indexOf("--core")
+  const contextSplit = args.indexOf("--context")
+  const firstSplit = [coreSplit, contextSplit].filter((index) => index !== -1).sort((a, b) => a - b)[0] ?? args.length
+  const muscleSources = args.slice(0, firstSplit)
+  const coreSources =
+    coreSplit === -1
+      ? []
+      : args.slice(coreSplit + 1, contextSplit === -1 ? args.length : contextSplit)
+  const contextSources = contextSplit === -1 ? [] : args.slice(contextSplit + 1)
 
-  if (muscleSources.length === 0) {
-    console.error("Usage: node scripts/build-anatomy.mjs <muscle.glb...> [--context <skeleton.glb...>]")
+  if (muscleSources.length === 0 || coreSources.length === 0) {
+    console.error(
+      "Usage: node scripts/build-anatomy.mjs <muscle.glb...> --core <trunk.glb...> [--context <skeleton.glb...>]",
+    )
     process.exit(1)
   }
 
@@ -135,20 +150,25 @@ async function main() {
 
   let merged = null
   const found = new Map()
-  const sources = [...muscleSources, ...contextSources]
+  const sources = [
+    ...muscleSources.map((src) => ({ src, kind: "muscle" })),
+    ...coreSources.map((src) => ({ src, kind: "core" })),
+    ...contextSources.map((src) => ({ src, kind: "context" })),
+  ]
 
-  for (const src of sources) {
+  for (const { src, kind } of sources) {
     const doc = await io.read(src)
     let kept = 0
 
     for (const node of doc.getRoot().listNodes()) {
       const raw = node.getName()
       const group = groupFor(raw)
-      if (group && node.getMesh()) {
+      const keepGroup = kind === "muscle" ? group && group !== "core" : kind === "core" ? group === "core" : false
+      if (keepGroup && node.getMesh()) {
         node.setName(`${group}__${baseName(raw)}`)
         found.set(group, (found.get(group) ?? 0) + 1)
         kept++
-      } else if (node.getMesh() && isContext(raw)) {
+      } else if (kind === "context" && node.getMesh() && isContext(raw)) {
         node.setName(`context__${baseName(raw)}`)
         found.set("context", (found.get("context") ?? 0) + 1)
         kept++

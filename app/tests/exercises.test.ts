@@ -1,4 +1,5 @@
 import { strict as assert } from "node:assert"
+import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
 
@@ -70,5 +71,14 @@ describe("automatic full-body coverage", () => {
     assert.doesNotMatch(goal, /focus|toggleMuscle|muscle-pick|Which parts|onToggle/)
     assert.doesNotMatch(anatomy, /onClick|onToggle|ThreeEvent/)
     assert.doesNotMatch(result, /e\.why/)
+  })
+
+  it("has renderable anatomy for every recommendation group", () => {
+    const output = execFileSync(process.execPath, ["scripts/validate-anatomy-coverage.mjs"], {
+      encoding: "utf8",
+    })
+
+    for (const { id } of MUSCLES) assert.match(output, new RegExp(`${id} \\([1-9][0-9]*\\)`))
+    assert.match(output, /core \(4\)/)
   })
 })

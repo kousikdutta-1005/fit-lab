@@ -4,6 +4,8 @@ muscles.glb
 This file is a derivative of the Open 3D Model of Human Anatomy.
 
 Source:  https://anatomytool.org/open3dmodel
+Core source:
+https://anatomytool.org/content/open3dmodel-muscles-thorax-abdomen-and-back-english-labels
 Licence: Creative Commons Attribution-ShareAlike 4.0 International
          https://creativecommons.org/licenses/by-sa/4.0/
 
@@ -14,15 +16,21 @@ Center (VUmc), Radboud University Medical Center Nijmegen and University of
 Gent. Initial grant from the Dutch Ministry of Education, Culture and Science.
 The model builds on the earlier BodyParts3D and Z-Anatomy models.
 
+The March 2026 thorax, abdomen and back model was created by the Open3D
+project, with 3D modelling by Eungyeol Lee and anatomical content by Andreas
+Herrler, O. Paul Gobée, George J.R. Maat, Jan Kooloos and Marco C. DeRuiter.
+Its web model was prepared by Daniël Jansma.
+
 Changes made in this derivative
 -------------------------------
 
-- Kept only the muscles this product names. Bursae, tendon sheaths, ligaments,
-  nerves and vessels were removed.
+- Kept only the muscles this product names. Core uses the source model's rectus
+  abdominis, external and internal abdominal obliques, and transversus
+  abdominis. Bursae, tendon sheaths, ligaments, nerves and vessels were removed.
 - Removed all textures. The material is generated at runtime.
-- Decimated the geometry with meshoptimizer, from roughly 2.5 million triangles
-  across the two source files to about 32,000, so it loads on a cheap phone.
-- Renamed nodes with a muscle-group prefix so the app can select a group.
+- Decimated the retained geometry with meshoptimizer to 23,840 triangles, so it
+  loads on a cheap phone.
+- Renamed nodes with a muscle-group prefix so the app can render a group.
 
 Because the source is ShareAlike, this derived file is released under the same
 licence: CC BY-SA 4.0. The build script is at app/scripts/build-anatomy.mjs.

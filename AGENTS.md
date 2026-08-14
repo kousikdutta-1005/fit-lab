@@ -190,6 +190,8 @@ Obligations, since ShareAlike is not optional:
   `app/public/anatomy/LICENSE.txt`, and in the README.
 - Changes are documented in that LICENSE.txt, as the licence requires.
 
-Rebuild it with `node scripts/build-anatomy.mjs <upper-limb.glb> <lower-limb.glb>`
-using the source files from anatomytool.org. The sources are ~12MB and are not
-committed; the built asset is 0.57MB, roughly 454KB over the wire.
+Rebuild it with
+`node scripts/build-anatomy.mjs <upper-limb.glb> <lower-limb.glb> --core <trunk.glb> --context <skeleton.glb>`
+using the source files from anatomytool.org. The sources are not committed. Run
+`npm run validate:anatomy` after every rebuild; it fails if any recommendation
+group lacks renderable geometry.
