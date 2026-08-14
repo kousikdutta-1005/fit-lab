@@ -5,7 +5,14 @@ import type { Sex } from "../lib/calc"
 import { groupAnswered, safetyComplete } from "../lib/flow"
 import type { GroupState } from "../lib/flow"
 import type { ConditionId, ReadinessId } from "../lib/screening"
-import { CONDITIONS, READINESS, SCOFF_QUESTIONS, SCOFF_TAGS, readinessItems } from "../lib/screening"
+import {
+  CONDITIONS,
+  SCOFF_QUESTIONS,
+  SCOFF_TAGS,
+  applicableConditions,
+  pruneConditions,
+  readinessItems,
+} from "../lib/screening"
 import type { StageNode } from "./nodes"
 import type { GlyphName } from "../components/controls"
 
@@ -52,7 +59,8 @@ export function SafetyStage({
   onNext,
 }: {
   nodes: StageNode[]
-  sex: Sex
+  /** Null cannot reach here in the flow, but the type says what is true. */
+  sex: Sex | null
   flags: ReadinessId[]
   onFlags: (next: ReadinessId[]) => void
   flagsNone: boolean
@@ -71,16 +79,19 @@ export function SafetyStage({
   const foodGroup: GroupState = { selected: scoff.length, none: scoffNone }
   const done = safetyComplete(readinessGroup, foodGroup)
 
-  // The condition list tailors the advice, so it is only worth showing to
-  // somebody who has said there is a condition to tailor for.
-  const showConditions = READINESS.some(
-    (item) => item.opensConditions && flags.includes(item.id),
-  )
+  // Only the conditions somebody has actually opened the door to. A bone or
+  // joint problem opens knee and back; a long-term condition opens the medical
+  // list; heart or blood pressure opens hypertension.
+  const available = applicableConditions(flags)
 
   function toggleFlag(id: ReadinessId) {
     const next = flags.includes(id) ? flags.filter((x) => x !== id) : [...flags, id]
     onFlags(next)
     if (next.length > 0) onFlagsNone(false)
+    // Taking back the answer that offered a condition takes the condition with
+    // it, so a result page can never carry advice for something unticked.
+    const kept = pruneConditions(conditions, next)
+    if (kept.length !== conditions.length) onConditions(kept)
   }
 
   function toggleScoff(i: number) {
@@ -135,9 +146,9 @@ export function SafetyStage({
         />
       </Group>
 
-      {showConditions && (
+      {available.length > 0 && (
         <Group title="Which one" glyph="clipboard" answered={false} prompt="Optional. It changes the advice, not the answer.">
-          {CONDITIONS.map((c) => (
+          {CONDITIONS.filter((c) => available.includes(c.id)).map((c) => (
             <TapCard
               key={c.id}
               on={conditions.includes(c.id)}

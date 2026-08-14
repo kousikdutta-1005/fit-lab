@@ -163,6 +163,7 @@ export function Tape({
   step = 1,
   unit,
   onChange,
+  onTouch,
   format,
 }: {
   label: string
@@ -172,6 +173,13 @@ export function Tape({
   step?: number
   unit?: string
   onChange: (v: number) => void
+  /**
+   * Fired the moment the tape is deliberately operated, before any value
+   * changes. It exists so a caller can show a starting number without that
+   * number counting as an answer: nothing is committed until somebody puts a
+   * finger on it.
+   */
+  onTouch?: () => void
   format?: (v: number) => string
 }) {
   const strip = useRef<HTMLDivElement>(null)
@@ -189,6 +197,7 @@ export function Tape({
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    onTouch?.()
     drag.current = { x: e.clientX, value }
   }
 
@@ -218,15 +227,18 @@ export function Tape({
     }
     if (e.key in keys) {
       e.preventDefault()
+      onTouch?.()
       nudge(keys[e.key])
       return
     }
     if (e.key === "Home") {
       e.preventDefault()
+      onTouch?.()
       onChange(min)
     }
     if (e.key === "End") {
       e.preventDefault()
+      onTouch?.()
       onChange(max)
     }
   }
@@ -255,7 +267,10 @@ export function Tape({
         <button
           type="button"
           className="tape-step tap"
-          onClick={() => nudge(-1)}
+          onClick={() => {
+            onTouch?.()
+            nudge(-1)
+          }}
           aria-label={`Decrease ${label}`}
         >
           −
@@ -293,7 +308,10 @@ export function Tape({
         <button
           type="button"
           className="tape-step tap"
-          onClick={() => nudge(1)}
+          onClick={() => {
+            onTouch?.()
+            nudge(1)
+          }}
           aria-label={`Increase ${label}`}
         >
           +

@@ -208,11 +208,13 @@ export default function Character3D({
   build,
   params,
   height = 400,
+  label,
   onUnavailable,
 }: {
   build: Build
   params: BodyParams
   height?: number
+  label: string
   onUnavailable: () => void
 }) {
   const reduced =
@@ -220,7 +222,9 @@ export default function Character3D({
     !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
 
   return (
-    <div style={{ height, width: "100%" }}>
+    // A canvas has no accessible name of its own, so the figure is announced
+    // here or not at all.
+    <div style={{ height, width: "100%" }} role="img" aria-label={label}>
       <Canvas
         dpr={[1, 1.75]}
         camera={{ position: [0, -0.02, 4.55], fov: 42 }}

@@ -1,5 +1,5 @@
 import { BodyView } from "../components/BodyView"
-import { DEFAULT_MUSCLE, defaultShoulderRatio } from "../lib/figure"
+import { DEFAULT_MUSCLE, defaultShoulderRatio, figureLabel } from "../lib/figure"
 import { useMeasuredHeight } from "../components/use-measure"
 
 /**
@@ -33,7 +33,7 @@ export function Intro({ onStart }: { onStart: () => void }) {
 
       <div className="stage-main">
         <div className="stage-scene scanline" ref={ref}>
-          <BodyView build={demo} height={height} />
+          <BodyView build={demo} height={height} label={figureLabel(null)} />
         </div>
 
         <div className="stage-tray">

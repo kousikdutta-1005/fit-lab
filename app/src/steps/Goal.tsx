@@ -79,14 +79,16 @@ export function GoalStage({
   const waiting = done
     ? null
     : state.kind === null
-      ? "Pick a goal to continue"
-      : fields.target && state.weeks === null
-        ? "Pick a timeline"
-        : fields.trainingAge && state.trainingAge === null
-          ? "Say how long you have trained"
-          : state.place === null
-            ? "Say where you will train"
-            : "Pick at least one muscle"
+      ? "Pick a goal"
+      : fields.target && state.targetWeightKg === null
+        ? "Set a target weight"
+        : fields.timeline && state.weeks === null
+          ? "Pick a timeline"
+          : fields.trainingAge && state.trainingAge === null
+            ? "Say how long you have trained"
+            : state.place === null
+              ? "Say where you will train"
+              : "Pick at least one muscle"
 
   return (
     <Stage
@@ -115,10 +117,11 @@ export function GoalStage({
         onChange={(kind) =>
           onChange({
             kind,
-            // Opening the tape on their own weight is not a suggested target,
-            // it is the only number here that is theirs. Leaving it there says
-            // "keep this weight", which the assessment answers honestly.
-            targetWeightKg: goalFields(kind).target ? (state.targetWeightKg ?? Math.round(weightKg)) : null,
+            // Nothing is seeded into state here. The tape below opens on their
+            // own weight so it has somewhere to start, but a number the person
+            // never touched is not a target they set, and the flow will not
+            // move until they have.
+            targetWeightKg: goalFields(kind).target ? state.targetWeightKg : null,
             weeks: goalFields(kind).timeline ? state.weeks : null,
             trainingAge: goalFields(kind).trainingAge ? state.trainingAge : null,
           })
@@ -134,6 +137,9 @@ export function GoalStage({
           max={200}
           value={state.targetWeightKg ?? Math.round(weightKg)}
           onChange={(v) => onChange({ targetWeightKg: v })}
+          onTouch={() =>
+            onChange({ targetWeightKg: state.targetWeightKg ?? Math.round(weightKg) })
+          }
         />
       )}
 

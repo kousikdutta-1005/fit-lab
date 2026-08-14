@@ -2,7 +2,7 @@ import { Callout, Disclosure, Kicker } from "../components/ui"
 import { BodyView } from "../components/BodyView"
 import { MuscleView } from "../components/MuscleView"
 import { Glyph, Tiles } from "../components/controls"
-import { DEFAULT_MUSCLE, defaultShoulderRatio } from "../lib/figure"
+import { DEFAULT_MUSCLE, defaultShoulderRatio, figureLabel } from "../lib/figure"
 import { Gauge, Timeline, ValueChip, VerdictCard } from "../components/viz"
 import { PERCENTILE_SOURCE, context, percentileOf } from "../lib/percentiles"
 import type { Ancestry, Profile } from "../lib/calc"
@@ -23,7 +23,7 @@ import {
 import type { Intent } from "../lib/goals"
 import { assess } from "../lib/goals"
 import type { HealthAnswers } from "../lib/screening"
-import { screen } from "../lib/screening"
+import { notesDefaultOpen, screen } from "../lib/screening"
 import type { MuscleId, Place } from "../data/exercises"
 import { MUSCLES, gapFor, pickExercises } from "../data/exercises"
 
@@ -173,7 +173,12 @@ export function Result({
         {scr.notes.length > 0 && (
           <div className="notes">
             {scr.notes.map((n) => (
-              <Disclosure key={n.title} title={n.title} hint="What to do about it">
+              <Disclosure
+                key={n.title}
+                title={n.title}
+                hint="What to do about it"
+                defaultOpen={notesDefaultOpen(scr.kind)}
+              >
                 <p className="why-body">{n.body}</p>
               </Disclosure>
             ))}
@@ -196,6 +201,12 @@ export function Result({
               bodyFat: bfMid ?? 22,
             }}
             height={330}
+            label={figureLabel({
+              heightCm: profile.heightCm,
+              weightKg: profile.weightKg,
+              waistCm: profile.waistCm,
+              hipCm: profile.sex === "female" ? profile.hipCm : undefined,
+            })}
           />
           <p className="scene-strip mono">
             {`${profile.heightCm}cm · ${profile.weightKg}kg · waist ${profile.waistCm} · neck ${profile.neckCm}${profile.sex === "female" ? ` · hip ${profile.hipCm}` : ""}`}

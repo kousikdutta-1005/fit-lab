@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { BodyView } from "../components/BodyView"
+import { Character } from "../components/Character"
 import type { Build } from "../components/Character"
+import { NEUTRAL_SHAPE, figureLabel } from "../lib/figure"
 import { Chip, Glyph, Help, Tape, Tiles } from "../components/controls"
 import type { GlyphName } from "../components/controls"
 import { Stage } from "../components/Stage"
@@ -55,23 +57,39 @@ export function BodyStage({
   onNext,
 }: {
   nodes: StageNode[]
-  sex: Sex
+  /** Null until it is chosen. It is never assumed. */
+  sex: Sex | null
   onSex: (s: Sex) => void
   values: BodyValues
   onValue: (metric: NumericMetricId, value: number) => void
-  build: Build
+  /** Null while sex is unanswered, because both meshes are sexed. */
+  build: Build | null
   onBack: () => void
   onNext: () => void
 }) {
-  const [active, setActive] = useState<MetricId>("sex")
+  const [open, setOpen] = useState<MetricId>("sex")
   const order: NumericMetricId[] =
     sex === "female"
       ? ["age", "height", "weight", "waist", "neck", "hip"]
       : ["age", "height", "weight", "waist", "neck"]
 
+  // Switching back to male while the hip tape is open must not leave a tape
+  // for a reading that is no longer asked for.
+  const active: MetricId =
+    open !== "sex" && !order.includes(open as NumericMetricId) ? "sex" : open
+
   const done = bodyComplete(sex, values)
   const missing = missingBodyMetrics(sex, values)
   const metric = active === "sex" ? null : METRICS[active]
+
+  // Only what has actually been entered, so nothing seeded is ever announced
+  // as a measurement.
+  const label = figureLabel({
+    heightCm: values.height,
+    weightKg: values.weight,
+    waistCm: values.waist,
+    hipCm: sex === "female" ? values.hip : undefined,
+  })
 
   const shown = (m: NumericMetricId) => {
     const v = values[m]
@@ -94,20 +112,37 @@ export function BodyStage({
       onBack={onBack}
       onNext={onNext}
       nextDisabled={!done}
-      waiting={done ? null : `Still to measure: ${missing.map((m) => METRICS[m].label.toLowerCase()).join(", ")}`}
-      scene={(height) => (
-        <>
-          <BodyView build={build} height={height} />
-          {strip.length > 0 && <p className="scene-strip mono">{strip.join(" · ")}</p>}
-        </>
-      )}
+      waiting={
+        done
+          ? null
+          : sex === null
+            ? "Choose sex at birth to build the figure"
+            : `Still to measure: ${missing.map((m) => METRICS[m].label.toLowerCase()).join(", ")}`
+      }
+      scene={(height) =>
+        build === null ? (
+          // Neither base mesh is neutral, so before sex is answered the figure
+          // is an outline that is plainly nobody, and it says so.
+          <>
+            <div style={{ display: "grid", placeItems: "center", height, opacity: 0.55 }}>
+              <Character shape={NEUTRAL_SHAPE} height={height * 0.72} label={figureLabel(null)} />
+            </div>
+            <p className="scene-strip mono">Illustration only</p>
+          </>
+        ) : (
+          <>
+            <BodyView build={build} height={height} label={label} />
+            {strip.length > 0 && <p className="scene-strip mono">{strip.join(" · ")}</p>}
+          </>
+        )
+      }
     >
       <div className="rail" role="group" aria-label="Your readings">
         <Chip
           label="Sex"
-          value={sex === "female" ? "Female" : "Male"}
+          value={sex === null ? "—" : sex === "female" ? "Female" : "Male"}
           active={active === "sex"}
-          onClick={() => setActive("sex")}
+          onClick={() => setOpen("sex")}
           glyph="person"
         />
         {order.map((m) => (
@@ -116,7 +151,7 @@ export function BodyStage({
             label={METRICS[m].label}
             value={shown(m)}
             active={active === m}
-            onClick={() => setActive(m)}
+            onClick={() => setOpen(m)}
             glyph={METRICS[m].glyph}
           />
         ))}
@@ -129,7 +164,7 @@ export function BodyStage({
           value={sex}
           onChange={(next) => {
             onSex(next)
-            setActive("age")
+            setOpen("age")
           }}
           options={[
             { id: "female" as Sex, label: "Female", glyph: "person" },
@@ -144,6 +179,14 @@ export function BodyStage({
           max={metric.max}
           value={values[active as NumericMetricId] ?? metric.seed}
           onChange={(v) => onValue(active as NumericMetricId, v)}
+          // The number the tape opens on is a starting point, not an answer, so
+          // it is committed the moment the tape is actually operated. Without
+          // this, anybody whose real measurement happens to equal the starting
+          // point could never set it: they would drag, land on the number that
+          // was already shown, and the reading would still count as unset.
+          onTouch={() =>
+            onValue(active as NumericMetricId, values[active as NumericMetricId] ?? metric.seed)
+          }
         />
       )}
 

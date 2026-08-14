@@ -64,9 +64,12 @@ function capable(): boolean {
 export function BodyView({
   build,
   height = 400,
+  label,
 }: {
   build: Build
   height?: number
+  /** What this figure may claim about the person. See lib/figure.ts. */
+  label: string
 }) {
   const ref = useRef<HTMLElement>(null)
   const [show, setShow] = useState(false)
@@ -122,7 +125,7 @@ export function BodyView({
           licence: "https://creativecommons.org/licenses/by/4.0/",
         }
 
-  const fallback = <Flat build={build} shape={presentation.flat} height={height} />
+  const fallback = <Flat shape={presentation.flat} height={height} label={label} />
 
   return (
     <figure ref={ref} style={{ minHeight: height, margin: 0, position: "relative" }}>
@@ -133,6 +136,7 @@ export function BodyView({
               build={build}
               params={presentation.params}
               height={height}
+              label={label}
               onUnavailable={() => setFailed(true)}
             />
           </Suspense>
@@ -175,17 +179,17 @@ export function BodyView({
 }
 
 function Flat({
-  build,
   shape,
   height,
+  label,
 }: {
-  build: Build
   shape: ReturnType<typeof bodyPresentation>["flat"]
   height: number
+  label: string
 }) {
   return (
     <div style={{ display: "grid", placeItems: "center", height }}>
-      <Character build={build} shape={shape} height={height * 0.82} />
+      <Character shape={shape} height={height * 0.82} label={label} />
     </div>
   )
 }

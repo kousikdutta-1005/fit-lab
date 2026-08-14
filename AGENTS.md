@@ -120,9 +120,23 @@ Two rules fall out of it.
   away.
 - **Never a silent default.** An untouched safety group is not a group of no
   answers; it is an unanswered group, and the flow will not move until the
-  person has ticked something or said plainly that none of it applies.
-  Similarly, a warning must never be generated from a value nobody supplied,
-  which is why `planFlags` guards every branch on the field being present.
+  person has ticked something or said plainly that none of it applies. The same
+  rule governs sex, which is nullable throughout `flow.ts`: it decides the
+  body-fat formula, the FFMI ceiling, the waist threshold, the percentile table,
+  which mesh is drawn and whether pregnancy is asked at all, so a default of
+  male would answer six things on somebody's behalf and then report them back as
+  their own. A warning must never be generated from a value nobody supplied
+  either, which is why `planFlags` guards every branch on the field being
+  present.
+- **A starting number is not an answer.** Every tape opens somewhere, and where
+  it opens is a drawing decision. The value is only committed once the control
+  is deliberately operated, which is what `Tape`'s `onTouch` is for. Without it
+  the target weight would arrive pre-answered, and anybody whose real
+  measurement happened to equal the starting number could never set it at all.
+- **An answer withdrawn takes its consequences with it.** Untick the reason a
+  question was offered and the answer to that question goes too: conditions are
+  pruned against the readiness flags that opened them, and a change of sex
+  withdraws a confirmation that was given about a different list of questions.
 
 ## The rules the product cannot break
 

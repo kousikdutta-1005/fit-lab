@@ -92,8 +92,6 @@ export const READINESS: {
   question: string
   /** Only asked where it can apply. */
   femaleOnly?: boolean
-  /** Selecting this opens the condition list, which tailors the advice. */
-  opensConditions?: boolean
 }[] = [
   {
     id: "chestPain",
@@ -114,13 +112,11 @@ export const READINESS: {
     id: "heartOrBp",
     short: "Heart or blood pressure",
     question: "A doctor has diagnosed a heart condition or high blood pressure.",
-    opensConditions: true,
   },
   {
     id: "chronic",
     short: "Long-term condition",
     question: "Any other long-term diagnosed condition.",
-    opensConditions: true,
   },
   {
     id: "jointProblem",
@@ -135,8 +131,58 @@ export const READINESS: {
   },
 ]
 
-export function readinessItems(sex: "male" | "female") {
+/**
+ * The questions that apply to this person. Sex may still be unanswered, in
+ * which case the questions that only apply to one of them are not asked yet.
+ */
+export function readinessItems(sex: "male" | "female" | null) {
   return READINESS.filter((item) => !item.femaleOnly || sex === "female")
+}
+
+/**
+ * Which readiness answers make a condition worth offering.
+ *
+ * This exists because "any other long-term condition" was carrying the whole
+ * list on its own, which had two consequences: somebody who ticked only a bone
+ * or joint problem was never offered knee or back pain, and so never got the
+ * two notes written for exactly them; and somebody who ticked a long-term
+ * condition, chose asthma, then changed their mind and unticked it kept the
+ * asthma note on a result page that no longer had anything to hang it on.
+ */
+export const CONDITION_PARENTS: Record<ConditionId, ReadinessId[]> = {
+  "type-2-diabetes": ["chronic"],
+  hypertension: ["heartOrBp", "chronic"],
+  pcos: ["chronic"],
+  hypothyroid: ["chronic"],
+  "knee-pain": ["jointProblem"],
+  "back-pain": ["jointProblem"],
+  asthma: ["chronic"],
+}
+
+/** The conditions worth offering, given what has been ticked so far. */
+export function applicableConditions(flags: ReadinessId[]): ConditionId[] {
+  return CONDITIONS.map((c) => c.id).filter((id) =>
+    CONDITION_PARENTS[id].some((parent) => flags.includes(parent)),
+  )
+}
+
+/** Drop any condition whose enabling answers have all been taken back. */
+export function pruneConditions(conditions: ConditionId[], flags: ReadinessId[]): ConditionId[] {
+  const allowed = new Set(applicableConditions(flags))
+  return conditions.filter((c) => allowed.has(c))
+}
+
+/**
+ * Whether the screening notes are shown open.
+ *
+ * They are, and it is not a styling choice. A note only exists because
+ * something specific applied: a condition to train around, a pregnancy, or a
+ * single difficult answer about food. Every one of them is an instruction, and
+ * an instruction folded behind a summary is an instruction the person who
+ * needed it did not read. Methodology folds. This does not.
+ */
+export function notesDefaultOpen(kind: Screen["kind"]): boolean {
+  return kind === "caution" || kind === "clear"
 }
 
 export type ConditionId =

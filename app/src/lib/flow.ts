@@ -19,6 +19,7 @@
 import type { Sex } from "./calc.ts"
 import type { GoalKind, TrainingAge } from "./goals.ts"
 import type { MuscleId, Place } from "../data/exercises.ts"
+import { readinessItems } from "./screening.ts"
 
 export type Stage = "intro" | "body" | "safety" | "goal" | "result"
 
@@ -51,6 +52,12 @@ export function previousStage(stage: Stage): Stage {
  *
  * Hip is female-only because the Navy formula only uses it there; asking a man
  * for it would be collecting a number to throw away.
+ *
+ * Sex is nullable everywhere in this module, and that is the point. It changes
+ * the body-fat formula, the FFMI ceiling, the waist threshold, the percentile
+ * table, which mesh is drawn and whether pregnancy is even a question. A
+ * default of "male" would answer all of that on the person's behalf and then
+ * report it back as though they had said it.
  */
 export type MetricId = "sex" | "age" | "height" | "weight" | "waist" | "neck" | "hip"
 
@@ -58,21 +65,30 @@ export type NumericMetricId = Exclude<MetricId, "sex">
 
 const BASE_METRICS: MetricId[] = ["sex", "age", "height", "weight", "waist", "neck"]
 
-export function bodyMetrics(sex: Sex): MetricId[] {
+export function bodyMetrics(sex: Sex | null): MetricId[] {
   return sex === "female" ? [...BASE_METRICS, "hip"] : BASE_METRICS
 }
 
 export type BodyValues = Partial<Record<NumericMetricId, number>>
 
-export function requiredBodyMetrics(sex: Sex): NumericMetricId[] {
+export function requiredBodyMetrics(sex: Sex | null): NumericMetricId[] {
   return bodyMetrics(sex).filter((m): m is NumericMetricId => m !== "sex")
 }
 
-export function missingBodyMetrics(sex: Sex, values: BodyValues): NumericMetricId[] {
+export function missingBodyMetrics(sex: Sex | null, values: BodyValues): NumericMetricId[] {
   return requiredBodyMetrics(sex).filter((m) => typeof values[m] !== "number")
 }
 
-export function bodyComplete(sex: Sex, values: BodyValues): boolean {
+/**
+ * Complete means every applicable reading is set *and* sex has been chosen.
+ *
+ * While sex is unanswered the hip is not in the required list, because whether
+ * it is required is one of the things sex decides. That is not a loophole: the
+ * body is incomplete regardless until sex is answered, and answering it female
+ * puts the hip straight back on the list.
+ */
+export function bodyComplete(sex: Sex | null, values: BodyValues): boolean {
+  if (sex === null) return false
   return missingBodyMetrics(sex, values).length === 0
 }
 
@@ -89,6 +105,22 @@ export function groupAnswered(group: GroupState): boolean {
 
 export function safetyComplete(readiness: GroupState, food: GroupState): boolean {
   return groupAnswered(readiness) && groupAnswered(food)
+}
+
+/**
+ * Whether a change of sex invalidates an answer already given to the readiness
+ * group.
+ *
+ * It does whenever the set of applicable questions changes, and the direction
+ * that matters most is male to female: "none of these apply" was said about a
+ * list that did not contain pregnancy, so carrying it across would confirm, on
+ * the person's behalf, an answer to a question they were never shown. The
+ * other direction is invalidated too, because a confirmation made about a
+ * longer list is not the same answer as one made about a shorter one.
+ */
+export function readinessSetChanged(previous: Sex | null, next: Sex | null): boolean {
+  const applicable = (sex: Sex | null) => readinessItems(sex).map((item) => item.id).join(",")
+  return applicable(previous) !== applicable(next)
 }
 
 /** Which goal questions change an output for this goal, and which do not. */

@@ -50,15 +50,19 @@ export type Build = {
  * cheap phone would be told their weight does not show.
  */
 export function Character({
-  build,
   shape,
   height = 320,
+  label,
 }: {
-  build: Build
   shape: FlatBodyShape
   height?: number
+  /**
+   * Supplied by the caller, because only the caller knows which of these
+   * numbers the person actually gave and which are the drawing's own starting
+   * point. See figureLabel in lib/figure.ts.
+   */
+  label: string
 }) {
-  const { heightCm, weightKg, waistCm, muscle } = build
   const { waist, shoulder, hip, chest, neck, arm, leg, soft, stature } = shape
   const cx = 60
   const headR = 8.4
@@ -68,7 +72,7 @@ export function Character({
       viewBox="0 -28 120 238"
       height={height}
       role="img"
-      aria-label={`A figure ${Math.round(heightCm)} centimetres tall, weighing ${Math.round(weightKg)} kilograms, with a waist of about ${Math.round(waistCm)} centimetres and ${muscle > 0.6 ? "muscular" : muscle > 0.3 ? "moderately built" : "lightly built"} limbs.`}
+      aria-label={label}
       style={{ display: "block", margin: "0 auto", maxWidth: "100%" }}
     >
       <defs>
