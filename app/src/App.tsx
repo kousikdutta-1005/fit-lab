@@ -116,6 +116,26 @@ export default function App() {
 
   const bodyFat = profile ? (navyBodyFat(profile) ?? 22) : 22
 
+  // Memoised, and up here with the other hooks rather than beside the figure it
+  // feeds, because below this point the component has already returned early
+  // for the intro and the result. Its identity is what decides whether the mesh
+  // is deformed again: without it, changing a hair colour would re-scale 13,000
+  // vertices.
+  const build = useMemo(
+    () => ({
+      sex,
+      heightCm,
+      weightKg,
+      waistCm,
+      neckCm,
+      hipCm: sex === "female" ? hipCm : 0,
+      shoulderRatio,
+      muscle,
+      bodyFat,
+    }),
+    [sex, heightCm, weightKg, waistCm, neckCm, hipCm, shoulderRatio, muscle, bodyFat],
+  )
+
   const characterDone = age !== ""
   const healthDone =
     chestPain !== null &&
@@ -181,22 +201,6 @@ export default function App() {
   }
 
   const index = FLOW.indexOf(stage)
-  // Memoised because its identity is what decides whether the mesh is deformed
-  // again: without this, changing a hair colour would re-scale 13,000 vertices.
-  const build = useMemo(
-    () => ({
-      sex,
-      heightCm,
-      weightKg,
-      waistCm,
-      neckCm,
-      hipCm: sex === "female" ? hipCm : 0,
-      shoulderRatio,
-      muscle,
-      bodyFat,
-    }),
-    [sex, heightCm, weightKg, waistCm, neckCm, hipCm, shoulderRatio, muscle, bodyFat],
-  )
   const figure = <BodyView build={build} look={look} height={340} />
 
   return (
