@@ -18,8 +18,9 @@
 
 import type { Sex } from "./calc.ts"
 import type { GoalKind, TrainingAge } from "./goals.ts"
-import type { MuscleId, Place } from "../data/exercises.ts"
+import type { ConditionId, ReadinessId } from "./screening.ts"
 import { readinessItems } from "./screening.ts"
+import type { MuscleId, Place } from "../data/exercises.ts"
 
 export type Stage = "intro" | "body" | "safety" | "goal" | "result"
 
@@ -121,6 +122,26 @@ export function safetyComplete(readiness: GroupState, food: GroupState): boolean
 export function readinessSetChanged(previous: Sex | null, next: Sex | null): boolean {
   const applicable = (sex: Sex | null) => readinessItems(sex).map((item) => item.id).join(",")
   return applicable(previous) !== applicable(next)
+}
+
+export type ReadinessSelection = {
+  flags: ReadinessId[]
+  flagsNone: boolean
+  conditions: ConditionId[]
+}
+
+/**
+ * A sex change that changes the readiness list makes the whole readiness answer
+ * stale, not only the "none" confirmation. Keeping chronic selected would make
+ * the group look complete before pregnancy had ever been reconsidered.
+ */
+export function readinessSelectionAfterSexChange(
+  previous: Sex | null,
+  next: Sex | null,
+  current: ReadinessSelection,
+): ReadinessSelection {
+  if (!readinessSetChanged(previous, next)) return current
+  return { flags: [], flagsNone: false, conditions: [] }
 }
 
 /** Which goal questions change an output for this goal, and which do not. */

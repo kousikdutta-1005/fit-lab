@@ -24,6 +24,7 @@ import {
   missingBodyMetrics,
   nextStage,
   previousStage,
+  readinessSelectionAfterSexChange,
   readinessSetChanged,
   requiredBodyMetrics,
   safetyComplete,
@@ -282,6 +283,33 @@ describe("changing sex withdraws a safety confirmation it no longer covers", () 
       : confirmedAsMale
     assert.equal(groupAnswered(withdrawn), false)
     assert.equal(safetyComplete(withdrawn, { selected: 0, none: true }), false)
+  })
+
+  it("clears a male chronic selection when pregnancy becomes newly applicable", () => {
+    const changed = readinessSelectionAfterSexChange("male", "female", {
+      flags: ["chronic"],
+      flagsNone: false,
+      conditions: ["asthma"],
+    })
+
+    assert.equal(readinessItems("female").some((r) => r.id === "pregnant"), true)
+    assert.deepEqual(changed, { flags: [], flagsNone: false, conditions: [] })
+    assert.equal(safetyComplete({ selected: changed.flags.length, none: changed.flagsNone }, { selected: 0, none: true }), false)
+
+    const reconfirmed = { selected: 1, none: false }
+    assert.equal(safetyComplete(reconfirmed, { selected: 0, none: true }), true)
+  })
+
+  it("clears a female readiness selection when pregnancy is removed from the set", () => {
+    const changed = readinessSelectionAfterSexChange("female", "male", {
+      flags: ["chronic", "pregnant"],
+      flagsNone: false,
+      conditions: ["asthma"],
+    })
+
+    assert.equal(readinessItems("male").some((r) => r.id === "pregnant"), false)
+    assert.deepEqual(changed, { flags: [], flagsNone: false, conditions: [] })
+    assert.equal(safetyComplete({ selected: changed.flags.length, none: changed.flagsNone }, { selected: 0, none: true }), false)
   })
 })
 

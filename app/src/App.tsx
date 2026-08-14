@@ -3,10 +3,10 @@ import { DEFAULT_MUSCLE, defaultShoulderRatio } from "./lib/figure"
 import type { Ancestry, Profile, Sex } from "./lib/calc"
 import { navyBodyFat } from "./lib/calc"
 import type { GoalState, NumericMetricId, Stage } from "./lib/flow"
-import { STAGES, bodyComplete, goalComplete, readinessSetChanged, safetyComplete } from "./lib/flow"
+import { STAGES, bodyComplete, goalComplete, readinessSelectionAfterSexChange, safetyComplete } from "./lib/flow"
 import type { Intent } from "./lib/goals"
 import type { ConditionId, HealthAnswers, ReadinessId } from "./lib/screening"
-import { SCOFF_QUESTIONS, pruneConditions, readinessItems } from "./lib/screening"
+import { SCOFF_QUESTIONS } from "./lib/screening"
 import { Intro } from "./steps/Intro"
 import { BodyStage } from "./steps/Body"
 import { SafetyStage } from "./steps/Safety"
@@ -143,22 +143,16 @@ export default function App() {
   }
 
   function changeSex(next: Sex) {
-    const invalidates = readinessSetChanged(sex, next)
+    const readiness = readinessSelectionAfterSexChange(sex, next, { flags, flagsNone, conditions })
     setSex(next)
-    if (!invalidates) return
+    if (readiness.flags === flags && readiness.flagsNone === flagsNone && readiness.conditions === conditions) return
 
     // The safety screen is not the same screen once sex changes. Going male to
-    // female adds the pregnancy question, and a "none of these apply" given
-    // about a list that did not contain it would confirm, on the person's
-    // behalf, an answer to a question they were never shown. So the
-    // confirmation is withdrawn and the group goes back to unanswered.
-    setFlagsNone(false)
-    const applicable = new Set(readinessItems(next).map((item) => item.id))
-    setFlags((prev) => {
-      const kept = prev.filter((f) => applicable.has(f))
-      setConditions((current) => pruneConditions(current, kept))
-      return kept
-    })
+    // female adds the pregnancy question, and a prior chronic/joint answer would
+    // otherwise keep the group complete before that new question was answered.
+    setFlags(readiness.flags)
+    setFlagsNone(readiness.flagsNone)
+    setConditions(readiness.conditions)
   }
 
   if (stage === "intro") return <Intro onStart={() => setStage("body")} />
