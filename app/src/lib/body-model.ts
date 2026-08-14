@@ -101,10 +101,13 @@ export const LIMITS = {
   shoulderRatio: [1.0, 1.8],
   muscle: [0, 1],
   bodyFatPct: [2, 65],
+  /** Residual mass may slim inferred regions further than it may enlarge them. */
+  massResponse: [-1.25, 0.45],
   /** Scale limits, applied to every value this module returns. */
   torsoWidth: [0.7, 1.75],
   torsoDepth: [0.7, 1.9],
   shoulderWidth: [0.84, 1.2],
+  shoulderDepth: [0.7, 1.9],
   neck: [0.75, 1.5],
   limb: [0.75, 1.5],
   /** How far a cross-section may depart from the base mesh's own roundness. */
@@ -196,11 +199,16 @@ function sectionFor(
   return { width: a / a0, depth: (a * aspect) / b0 }
 }
 
-function limitSection(section: SectionScale, note: () => void): SectionScale {
+function boundedSection(section: SectionScale): SectionScale {
   const width = clamp(section.width, LIMITS.torsoWidth[0], LIMITS.torsoWidth[1])
   const depth = clamp(section.depth, LIMITS.torsoDepth[0], LIMITS.torsoDepth[1])
-  if (width !== section.width || depth !== section.depth) note()
   return { width, depth }
+}
+
+function limitSection(section: SectionScale, note: () => void): SectionScale {
+  const limited = boundedSection(section)
+  if (limited.width !== section.width || limited.depth !== section.depth) note()
+  return limited
 }
 
 /**
@@ -286,65 +294,99 @@ export function bodyParams(input: BodyInput, profile: BodyProfile): BodyParams {
   // Shoulder breadth is mostly the slider, because biacromial breadth is bone
   // and barely moves with weight. The quarter-power on the waist is there so a
   // much wider torso does not end up with the shoulders of a smaller person.
+  const shoulderWidthRaw =
+    (1 + (shoulderRatio - SHOULDER_REFERENCE[sex]) * 0.55) *
+    Math.pow(Math.max(waist.width, 0.1), 0.22)
   const shoulderWidth = clamp(
-    (1 + (shoulderRatio - SHOULDER_REFERENCE[sex]) * 0.55) * Math.pow(Math.max(waist.width, 0.1), 0.22),
+    shoulderWidthRaw,
     LIMITS.shoulderWidth[0],
     LIMITS.shoulderWidth[1],
   )
 
-  const preChest = sectionFor(profile, L.chest, chestGirthCm, heightCm, aspectBias)
-  const preVolume = modelVolumeLitres(
-    profile,
-    (fraction) =>
-      torsoSectionAt(profile, fraction, {
-        hip,
-        waist,
-        chest: preChest,
-        shoulder: { width: shoulderWidth, depth: preChest.depth },
-      }),
-    limbFromBuild,
-    limbFromBuild,
-    heightCm,
-  )
   const targetLitres = weightKg / bodyDensity(bodyFatPct)
 
   /**
    * What the scale says that the tape did not. A person can weigh 15kg more
    * than their waist accounts for, and that mass is real and it is mostly on
-   * their limbs and their back. It is spread there, gently, and it is never
-   * allowed to argue with a measured cross-section.
+   * their limbs and their back. One monotonic response moves those unmeasured
+   * dimensions toward the scale until a safe bound is reached. It never argues
+   * with a measured cross-section, and any mass left over is disclosed below.
    */
-  const residual = clamp(preVolume > 0 ? targetLitres / preVolume - 1 : 0, -0.3, 0.45)
-  const chestCm = chestGirthCm * (1 + 0.18 * residual)
-  const chest = sectionFor(profile, L.chest, chestCm, heightCm, aspectBias)
-  const limb = limbFromBuild * (1 + 0.45 * residual)
-  const shoulder: SectionScale = { width: shoulderWidth, depth: chest.depth }
+  const limitedHip = limitSection(hip, () => notes.push("hips"))
+  const limitedWaist = limitSection(waist, () => notes.push("waist"))
+  type MassShape = {
+    chestCm: number
+    chestRaw: SectionScale
+    chest: SectionScale
+    armRaw: number
+    legRaw: number
+    arm: number
+    leg: number
+    shoulder: SectionScale
+    volumeLitres: number
+  }
+  const shapeAt = (response: number): MassShape => {
+    const chestCm = chestGirthCm * Math.max(0.05, 1 + 0.18 * response)
+    const chestRaw = sectionFor(profile, L.chest, chestCm, heightCm, aspectBias)
+    const chest = boundedSection(chestRaw)
+    const limb = limbFromBuild * Math.max(0.05, 1 + 0.45 * response)
+    const armRaw = limb
+    const legRaw = limb * (sex === "female" ? 1.02 : 1)
+    const arm = clamp(armRaw, LIMITS.limb[0], LIMITS.limb[1])
+    const leg = clamp(legRaw, LIMITS.limb[0], LIMITS.limb[1])
+    const shoulder: SectionScale = {
+      width: shoulderWidth,
+      depth: clamp(chestRaw.depth, LIMITS.shoulderDepth[0], LIMITS.shoulderDepth[1]),
+    }
+    const volumeLitres = modelVolumeLitres(
+      profile,
+      (fraction) =>
+        torsoSectionAt(profile, fraction, {
+          hip: limitedHip,
+          waist: limitedWaist,
+          chest,
+          shoulder,
+        }),
+      arm,
+      leg,
+      heightCm,
+    )
+    return { chestCm, chestRaw, chest, armRaw, legRaw, arm, leg, shoulder, volumeLitres }
+  }
+
+  const preVolume = shapeAt(0).volumeLitres
+  const requestedResponse = preVolume > 0 ? targetLitres / preVolume - 1 : 0
+  const response = clamp(requestedResponse, LIMITS.massResponse[0], LIMITS.massResponse[1])
+  const fitted = shapeAt(response)
+
+  const { chestCm, chestRaw, chest, armRaw, legRaw, arm, leg, shoulder, volumeLitres } = fitted
+  if (chest.width !== chestRaw.width || chest.depth !== chestRaw.depth) notes.push("chest")
+  if (arm !== armRaw || leg !== legRaw) notes.push("limbs")
+  if (
+    shoulder.width !== shoulderWidthRaw ||
+    shoulder.depth !== chestRaw.depth
+  ) {
+    notes.push("shoulders")
+  }
+  const volumeGap = targetLitres > 0 ? Math.abs(volumeLitres - targetLitres) / targetLitres : 0
+  if (
+    (Math.abs(response - requestedResponse) > 1e-6 && volumeGap > 0.02) ||
+    volumeGap > 0.12
+  ) {
+    notes.push("weight")
+  }
 
   const neckReferenceCm = NECK_REFERENCE[sex] * heightCm
   const neckRaw = neckCm / neckReferenceCm
   const neck = clamp(neckRaw, LIMITS.neck[0], LIMITS.neck[1])
   if (Math.abs(neck - neckRaw) > 1e-6) notes.push("neck")
 
-  const armRaw = limb
-  const legRaw = limb * (sex === "female" ? 1.02 : 1)
-  const arm = clamp(armRaw, LIMITS.limb[0], LIMITS.limb[1])
-  const leg = clamp(legRaw, LIMITS.limb[0], LIMITS.limb[1])
-  if (Math.abs(arm - armRaw) > 1e-6 || Math.abs(leg - legRaw) > 1e-6) notes.push("limbs")
-
   const limited = {
-    hip: limitSection(hip, () => notes.push("hips")),
-    waist: limitSection(waist, () => notes.push("waist")),
-    chest: limitSection(chest, () => notes.push("chest")),
+    hip: limitedHip,
+    waist: limitedWaist,
+    chest,
     shoulder,
   }
-
-  const volumeLitres = modelVolumeLitres(
-    profile,
-    (fraction) => torsoSectionAt(profile, fraction, limited),
-    arm,
-    leg,
-    heightCm,
-  )
 
   const metres = heightCm / 100
   return {

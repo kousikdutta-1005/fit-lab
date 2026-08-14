@@ -1,10 +1,18 @@
-import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from "react"
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from "react"
 import type { ErrorInfo, ReactNode } from "react"
 import type { Build } from "./Character"
 import { Character } from "./Character"
 import type { Look } from "./Character"
+import { bodyPresentation } from "../lib/flat-body"
+import type { BodyProfile } from "../lib/body-profile"
+import femaleProfile from "../data/body-profile-female.json"
+import maleProfile from "../data/body-profile.json"
 
 const Character3D = lazy(() => import("./Character3D"))
+const PROFILES: Record<Build["sex"], BodyProfile> = {
+  male: maleProfile as BodyProfile,
+  female: femaleProfile as BodyProfile,
+}
 
 class Body3DErrorBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
@@ -66,8 +74,24 @@ export function BodyView({
   const ref = useRef<HTMLElement>(null)
   const [show, setShow] = useState(false)
   const [failed, setFailed] = useState(false)
-  const [limit, setLimit] = useState<string | null>(null)
-  const onLimit = useCallback((note: string | null) => setLimit(note), [])
+  const presentation = useMemo(
+    () =>
+      bodyPresentation(
+        {
+          sex: build.sex,
+          heightCm: build.heightCm,
+          weightKg: build.weightKg,
+          waistCm: build.waistCm,
+          neckCm: build.neckCm,
+          hipCm: build.hipCm,
+          shoulderRatio: build.shoulderRatio,
+          muscle: build.muscle,
+          bodyFatPct: build.bodyFat,
+        },
+        PROFILES[build.sex],
+      ),
+    [build],
+  )
 
   useEffect(() => {
     if (!capable() || !ref.current) return
@@ -101,7 +125,7 @@ export function BodyView({
           licence: "https://creativecommons.org/licenses/by/4.0/",
         }
 
-  const fallback = <Flat build={build} look={look} height={height} />
+  const fallback = <Flat build={build} look={look} shape={presentation.flat} height={height} />
 
   return (
     <figure ref={ref} style={{ minHeight: height, margin: 0, position: "relative" }}>
@@ -110,16 +134,16 @@ export function BodyView({
           <Suspense fallback={fallback}>
             <Character3D
               build={build}
+              params={presentation.params}
               height={height}
               onUnavailable={() => setFailed(true)}
-              onLimit={onLimit}
             />
           </Suspense>
         </Body3DErrorBoundary>
       ) : (
         fallback
       )}
-      {show && !failed && limit && (
+      {presentation.limitNote && (
         <p
           className="mono"
           style={{
@@ -134,7 +158,7 @@ export function BodyView({
             color: "var(--muted)",
           }}
         >
-          {limit}
+          {presentation.limitNote}
         </p>
       )}
       <figcaption
@@ -153,10 +177,20 @@ export function BodyView({
   )
 }
 
-function Flat({ build, look, height }: { build: Build; look: Look; height: number }) {
+function Flat({
+  build,
+  look,
+  shape,
+  height,
+}: {
+  build: Build
+  look: Look
+  shape: ReturnType<typeof bodyPresentation>["flat"]
+  height: number
+}) {
   return (
     <div style={{ display: "grid", placeItems: "center", height }}>
-      <Character build={build} look={look} height={height * 0.82} />
+      <Character build={build} look={look} shape={shape} height={height * 0.82} />
     </div>
   )
 }

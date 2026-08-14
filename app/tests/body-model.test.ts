@@ -17,10 +17,11 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { bodyParams, LIMITS, modelVolumeLitres, torsoSectionAt } from "../src/lib/body-model.ts"
+import { bodyParams, clampNote, LIMITS, modelVolumeLitres, torsoSectionAt } from "../src/lib/body-model.ts"
 import type { BodyInput } from "../src/lib/body-model.ts"
 import { buildDeformation } from "../src/lib/body-deform.ts"
 import type { BodyProfile } from "../src/lib/body-profile.ts"
+import { bodyPresentation } from "../src/lib/flat-body.ts"
 import { navyBodyFat } from "../src/lib/calc.ts"
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -77,38 +78,83 @@ function paramsFor(input: BodyInput) {
   return bodyParams(input, PROFILES[input.sex])
 }
 
-/** Every base vertex of a mesh, read straight out of the committed GLB. */
-function baseVertices(sex: "male" | "female"): Float32Array {
+type BaseMesh = { vertices: Float32Array; triangles: Uint32Array }
+
+/** Every base triangle of a mesh, read straight out of the committed GLB. */
+function baseMesh(sex: "male" | "female"): BaseMesh {
   const file = sex === "male" ? "public/body/base.glb" : "public/body/base-female.glb"
   const bytes = readFileSync(resolve(here, "..", file))
   const jsonLength = bytes.readUInt32LE(12)
   const json = JSON.parse(bytes.toString("utf8", 20, 20 + jsonLength))
   const binStart = 20 + jsonLength + 8
   const out: number[] = []
+  const triangles: number[] = []
   for (const mesh of json.meshes ?? []) {
     for (const prim of mesh.primitives ?? []) {
+      assert.ok(prim.mode === undefined || prim.mode === 4, "body primitives must be triangles")
       const accessor = json.accessors[prim.attributes.POSITION]
       const view = json.bufferViews[accessor.bufferView]
       assert.equal(accessor.componentType, 5126, "positions are expected to be float32")
       const start = binStart + (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0)
       const stride = view.byteStride ?? 12
+      const vertexOffset = out.length / 3
       for (let i = 0; i < accessor.count; i++) {
         const at = start + i * stride
         out.push(bytes.readFloatLE(at), bytes.readFloatLE(at + 4), bytes.readFloatLE(at + 8))
       }
+
+      const indexAccessor = json.accessors[prim.indices]
+      const indexView = json.bufferViews[indexAccessor.bufferView]
+      const indexStart = binStart + (indexView.byteOffset ?? 0) + (indexAccessor.byteOffset ?? 0)
+      const readIndex =
+        indexAccessor.componentType === 5121
+          ? (at: number) => bytes.readUInt8(at)
+          : indexAccessor.componentType === 5123
+            ? (at: number) => bytes.readUInt16LE(at)
+            : indexAccessor.componentType === 5125
+              ? (at: number) => bytes.readUInt32LE(at)
+              : null
+      assert.ok(readIndex, `unsupported index component ${indexAccessor.componentType}`)
+      const indexStride = indexView.byteStride ?? (indexAccessor.componentType === 5121 ? 1 : indexAccessor.componentType === 5123 ? 2 : 4)
+      for (let i = 0; i < indexAccessor.count; i++) {
+        triangles.push(vertexOffset + readIndex(indexStart + i * indexStride))
+      }
     }
   }
   assert.ok(out.length > 3000, `expected a real mesh, got ${out.length / 3} vertices`)
-  return Float32Array.from(out)
+  assert.ok(triangles.length > 3000 && triangles.length % 3 === 0, "expected an indexed triangle mesh")
+  return { vertices: Float32Array.from(out), triangles: Uint32Array.from(triangles) }
 }
 
-const MESHES = { male: baseVertices("male"), female: baseVertices("female") }
+const BASE_MESHES = { male: baseMesh("male"), female: baseMesh("female") }
+const MESHES = { male: BASE_MESHES.male.vertices, female: BASE_MESHES.female.vertices }
 
 function deformed(input: BodyInput): { base: Float32Array; out: Float32Array } {
   const base = MESHES[input.sex]
   const out = new Float32Array(base.length)
   buildDeformation(PROFILES[input.sex], paramsFor(input)).apply(base, out)
   return { base, out }
+}
+
+/**
+ * Volume from the triangles sent to the renderer, not from body-model's slice
+ * tables. This catches a mass model that reports its own arithmetic as proof.
+ */
+function renderedVolumeLitres(input: BodyInput): number {
+  const mesh = BASE_MESHES[input.sex]
+  const out = new Float32Array(mesh.vertices.length)
+  buildDeformation(PROFILES[input.sex], paramsFor(input)).apply(mesh.vertices, out)
+  let signed = 0
+  for (let i = 0; i < mesh.triangles.length; i += 3) {
+    const ai = mesh.triangles[i] * 3
+    const bi = mesh.triangles[i + 1] * 3
+    const ci = mesh.triangles[i + 2] * 3
+    signed +=
+      out[ai] * (out[bi + 1] * out[ci + 2] - out[bi + 2] * out[ci + 1]) -
+      out[ai + 1] * (out[bi] * out[ci + 2] - out[bi + 2] * out[ci]) +
+      out[ai + 2] * (out[bi] * out[ci + 1] - out[bi + 1] * out[ci])
+  }
+  return (Math.abs(signed) * input.heightCm ** 3) / 6000
 }
 
 /**
@@ -257,6 +303,7 @@ describe("parameters from ordinary readings", () => {
         ["chest width", p.chest.width, LIMITS.torsoWidth],
         ["chest depth", p.chest.depth, LIMITS.torsoDepth],
         ["shoulder width", p.shoulder.width, LIMITS.shoulderWidth],
+        ["shoulder depth", p.shoulder.depth, LIMITS.shoulderDepth],
         ["neck", p.neck, LIMITS.neck],
         ["arm", p.arm, LIMITS.limb],
         ["leg", p.leg, LIMITS.limb],
@@ -277,6 +324,67 @@ describe("parameters from ordinary readings", () => {
     const p = paramsFor(impossible)
     assert.ok(p.notes.length > 0, "an impossible body should be reported as clamped")
     assert.ok(p.waist.width <= LIMITS.torsoWidth[1] + 1e-9)
+  })
+
+  it("bounds both shoulder dimensions and discloses either limit", () => {
+    const depthLimited = paramsFor(
+      withFat({ ...MALE, heightCm: 130, weightKg: 180, waistCm: 160, neckCm: 25, shoulderRatio: 1.05, muscle: 1 }),
+    )
+    assert.equal(depthLimited.shoulder.depth, LIMITS.shoulderDepth[1])
+    assert.ok(depthLimited.notes.includes("shoulders"), `missing shoulder depth note: ${depthLimited.notes}`)
+
+    const widthLimited = paramsFor({
+      ...male,
+      heightCm: 130,
+      waistCm: 84,
+      shoulderRatio: LIMITS.shoulderRatio[1],
+    })
+    assert.equal(widthLimited.shoulder.width, LIMITS.shoulderWidth[1])
+    assert.ok(widthLimited.shoulder.depth < LIMITS.shoulderDepth[1])
+    assert.ok(widthLimited.notes.includes("shoulders"), `missing shoulder width note: ${widthLimited.notes}`)
+  })
+
+  it("keeps slider-extreme weight response monotonic and reports saturation", () => {
+    const base = withFat({ ...MALE, heightCm: 210, waistCm: 120, neckCm: 37 })
+    const light = paramsFor({ ...base, weightKg: 35 })
+    const middle = paramsFor({ ...base, weightKg: 100 })
+    const heavy = paramsFor({ ...base, weightKg: 180 })
+
+    assert.ok(light.chest.width < middle.chest.width && middle.chest.width < heavy.chest.width)
+    assert.ok(light.arm < middle.arm && middle.arm < heavy.arm)
+
+    const rendered = [
+      renderedVolumeLitres({ ...base, weightKg: 35 }),
+      renderedVolumeLitres({ ...base, weightKg: 100 }),
+      renderedVolumeLitres({ ...base, weightKg: 180 }),
+    ]
+    assert.ok(rendered[0] < rendered[1] && rendered[1] < rendered[2], `rendered volumes were ${rendered}`)
+    assert.ok(light.read.targetLitres < rendered[0], "the light target should be below the safe rendered minimum")
+    assert.ok(light.notes.includes("weight"), `missing light-weight limitation: ${light.notes}`)
+    assert.ok(middle.notes.includes("weight"), `missing mid-weight limitation: ${middle.notes}`)
+    assert.ok(
+      Math.abs(rendered[2] - heavy.read.targetLitres) / heavy.read.targetLitres < 0.2,
+      `the supported heavy target drifted too far: ${rendered[2]}L vs ${heavy.read.targetLitres}L`,
+    )
+  })
+})
+
+describe("the flat fallback", () => {
+  it("uses a measured female hip without moving the measured waist", () => {
+    const base = bodyPresentation(female, PROFILES.female)
+    const wide = bodyPresentation({ ...female, hipCm: 108 }, PROFILES.female)
+    assert.ok(wide.flat.hip > base.flat.hip * 1.12, `${base.flat.hip} -> ${wide.flat.hip}`)
+    assert.equal(wide.flat.waist, base.flat.waist)
+  })
+
+  it("carries the same limitation note as the bounded 3D parameters", () => {
+    const presentation = bodyPresentation(
+      withFat({ ...MALE, heightCm: 130, weightKg: 180, waistCm: 160, neckCm: 25, muscle: 1 }),
+      PROFILES.male,
+    )
+    assert.equal(presentation.limitNote, clampNote(presentation.params))
+    assert.match(presentation.limitNote ?? "", /shoulders/)
+    assert.match(presentation.limitNote ?? "", /weight/)
   })
 })
 

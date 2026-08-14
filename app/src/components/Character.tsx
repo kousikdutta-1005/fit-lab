@@ -9,6 +9,8 @@
  * This is principle 2: the character is a mirror, not a fantasy.
  */
 
+import type { FlatBodyShape } from "../lib/flat-body"
+
 export type Look = {
   skin: string
   hair: string
@@ -52,38 +54,16 @@ export type Build = {
 export function Character({
   build,
   look,
+  shape,
   height = 320,
 }: {
   build: Build
   look: Look
+  shape: FlatBodyShape
   height?: number
 }) {
-  const { sex, heightCm, weightKg, waistCm, neckCm, shoulderRatio, muscle, bodyFat } = build
-
-  // Map a real waist onto drawing units. 60cm reads narrow, 120cm reads wide,
-  // and both are read against the person's own height, so the same tape on a
-  // shorter frame draws wider.
-  const scale = 170 / Math.max(heightCm, 120)
-  const waistUnits = 13 + ((waistCm * scale - 60) / 60) * 20
-  const waist = Math.max(9, Math.min(36, waistUnits))
-  const shoulder = waist * shoulderRatio
-  const hip = sex === "female" ? waist * 1.16 : waist * 1.02
-
-  // What the scale says that the tape did not, in the same spirit as the 3D
-  // model: the mass a waist does not account for goes to the limbs.
-  const bmi = weightKg / (heightCm / 100) ** 2
-  const expected = 10 + waistCm * scale * 0.16
-  const spare = Math.max(-0.25, Math.min(0.45, (bmi - expected) / 22))
-  const limb = (3.2 + muscle * 2.6 + Math.max(0, (bodyFat - 15) / 100) * 5) * (1 + spare * 0.5)
-  const soft = Math.max(0, Math.min(1, (bodyFat - 12) / 30))
-  const chest = sex === "female" ? waist * 0.98 : waist * 1.04
-  const neck = Math.max(2.6, Math.min(7.5, (neckCm * scale) / 10.3))
-
-  // The figure stands on the same floor whatever its height, so that a shorter
-  // person is drawn shorter rather than drawn smaller and framed the same. The
-  // view box carries the headroom for it: at 210cm the crown lands above where
-  // the old one ended, and a clipped head is worse than no height at all.
-  const stature = Math.max(0.72, Math.min(1.26, heightCm / 170))
+  const { heightCm, weightKg, waistCm, muscle } = build
+  const { waist, shoulder, hip, chest, neck, arm, leg, soft, stature } = shape
   const cx = 60
   const headR = 8.4
 
@@ -98,16 +78,16 @@ export function Character({
       <g transform={`translate(${cx} 196) scale(${stature.toFixed(3)}) translate(${-cx} -196)`}>
       {/* legs */}
       <path
-        d={`M${cx - hip * 0.55} 120 C ${cx - hip * 0.5} 150, ${cx - limb * 1.5} 165, ${cx - limb * 1.35} 196`}
+        d={`M${cx - hip * 0.55} 120 C ${cx - hip * 0.5} 150, ${cx - leg * 1.5} 165, ${cx - leg * 1.35} 196`}
         stroke={look.skin}
-        strokeWidth={limb * 1.85}
+        strokeWidth={leg * 1.85}
         strokeLinecap="round"
         fill="none"
       />
       <path
-        d={`M${cx + hip * 0.55} 120 C ${cx + hip * 0.5} 150, ${cx + limb * 1.5} 165, ${cx + limb * 1.35} 196`}
+        d={`M${cx + hip * 0.55} 120 C ${cx + hip * 0.5} 150, ${cx + leg * 1.5} 165, ${cx + leg * 1.35} 196`}
         stroke={look.skin}
-        strokeWidth={limb * 1.85}
+        strokeWidth={leg * 1.85}
         strokeLinecap="round"
         fill="none"
       />
@@ -116,14 +96,14 @@ export function Character({
       <path
         d={`M${cx - shoulder * 0.92} 62 C ${cx - shoulder * 1.15 - soft * 3} 88, ${cx - shoulder * 1.0} 108, ${cx - shoulder * 0.95} 124`}
         stroke={look.skin}
-        strokeWidth={limb * 1.35}
+        strokeWidth={arm * 1.35}
         strokeLinecap="round"
         fill="none"
       />
       <path
         d={`M${cx + shoulder * 0.92} 62 C ${cx + shoulder * 1.15 + soft * 3} 88, ${cx + shoulder * 1.0} 108, ${cx + shoulder * 0.95} 124`}
         stroke={look.skin}
-        strokeWidth={limb * 1.35}
+        strokeWidth={arm * 1.35}
         strokeLinecap="round"
         fill="none"
       />

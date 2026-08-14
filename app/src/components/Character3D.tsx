@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import type { Build } from "./Character"
-import { bodyParams, clampNote } from "../lib/body-model"
+import type { BodyParams } from "../lib/body-model"
 import { buildDeformation } from "../lib/body-deform"
 import type { BodyProfile } from "../lib/body-profile"
 import femaleProfile from "../data/body-profile-female.json"
@@ -45,37 +45,18 @@ const FLOOR = -1.62
 
 function Body({
   build,
+  params,
   reduced,
-  onLimit,
 }: {
   build: Build
+  params: BodyParams
   reduced: boolean
-  onLimit: (note: string | null) => void
 }) {
   const model = MODELS[build.sex]
   const profile = PROFILES[build.sex]
   const facing = build.sex === "male" ? Math.PI : 0
   const { scene } = useGLTF(model)
   const spin = useRef<THREE.Group>(null)
-
-  const params = useMemo(
-    () =>
-      bodyParams(
-        {
-          sex: build.sex,
-          heightCm: build.heightCm,
-          weightKg: build.weightKg,
-          waistCm: build.waistCm,
-          neckCm: build.neckCm,
-          hipCm: build.hipCm,
-          shoulderRatio: build.shoulderRatio,
-          muscle: build.muscle,
-          bodyFatPct: build.bodyFat,
-        },
-        profile,
-      ),
-    [build, profile],
-  )
 
   const material = useMemo(
     () =>
@@ -155,11 +136,6 @@ function Body({
 
   useEffect(() => () => material.dispose(), [material])
 
-  // If a set of measurements is past what the mesh can be drawn as, the figure
-  // is clamped and the reader is told. Silently drawing a monster instead would
-  // be worse than either.
-  useEffect(() => onLimit(clampNote(params)), [params, onLimit])
-
   useFrame((state) => {
     if (!spin.current || reduced) return
     spin.current.rotation.y = facing + Math.sin(state.clock.elapsedTime * 0.2) * 0.6
@@ -230,14 +206,14 @@ function ContextGuard({ onUnavailable }: { onUnavailable: () => void }) {
 
 export default function Character3D({
   build,
+  params,
   height = 400,
   onUnavailable,
-  onLimit,
 }: {
   build: Build
+  params: BodyParams
   height?: number
   onUnavailable: () => void
-  onLimit: (note: string | null) => void
 }) {
   const reduced =
     typeof window !== "undefined" &&
@@ -258,7 +234,7 @@ export default function Character3D({
         <pointLight position={[0, -0.8, 2.2]} intensity={5} color="#4be3d0" distance={8} />
 
         <Suspense fallback={null}>
-          <Body key={build.sex} build={build} reduced={reduced} onLimit={onLimit} />
+          <Body key={build.sex} build={build} params={params} reduced={reduced} />
         </Suspense>
         <Plinth />
         {!reduced && <ScanRing figure={REFERENCE_FIGURE * (build.heightCm / 170)} />}
