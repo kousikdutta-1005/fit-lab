@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react"
-import { Canvas, useFrame } from "@react-three/fiber"
+import { Suspense, useEffect, useMemo, useRef } from "react"
+import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import type { Build } from "./Character"
@@ -113,6 +113,7 @@ function sampleCurve(curve: Float32Array, y: number, slices: number): number {
 function Body({ build, reduced }: { build: Build; reduced: boolean }) {
   const model = MODELS[build.sex]
   const profile = PROFILES[build.sex]
+  const facing = build.sex === "male" ? Math.PI : 0
   const { scene } = useGLTF(model)
   const spin = useRef<THREE.Group>(null)
 
@@ -209,11 +210,11 @@ function Body({ build, reduced }: { build: Build; reduced: boolean }) {
 
   useFrame((state) => {
     if (!spin.current || reduced) return
-    spin.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.2) * 0.6
+    spin.current.rotation.y = facing + Math.sin(state.clock.elapsedTime * 0.2) * 0.6
   })
 
   return (
-    <group ref={spin}>
+    <group ref={spin} rotation={[0, facing, 0]}>
       <group position={[0, -FIGURE / 2, 0]} scale={FIGURE}>
         <primitive object={root} />
       </group>
@@ -254,7 +255,31 @@ function Plinth() {
   )
 }
 
-export default function Character3D({ build, height = 400 }: { build: Build; height?: number }) {
+function ContextGuard({ onUnavailable }: { onUnavailable: () => void }) {
+  const { gl } = useThree()
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    const handleLost = (event: Event) => {
+      event.preventDefault()
+      onUnavailable()
+    }
+    canvas.addEventListener("webglcontextlost", handleLost)
+    return () => canvas.removeEventListener("webglcontextlost", handleLost)
+  }, [gl, onUnavailable])
+
+  return null
+}
+
+export default function Character3D({
+  build,
+  height = 400,
+  onUnavailable,
+}: {
+  build: Build
+  height?: number
+  onUnavailable: () => void
+}) {
   const reduced =
     typeof window !== "undefined" &&
     !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
@@ -266,16 +291,22 @@ export default function Character3D({ build, height = 400 }: { build: Build; hei
         camera={{ position: [0, 0.02, 4.45], fov: 42 }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       >
+        <ContextGuard onUnavailable={onUnavailable} />
         <ambientLight intensity={0.6} />
         <directionalLight position={[2.5, 3, 3]} intensity={1.7} color="#dffff9" />
         <pointLight position={[2.6, 1.6, 2.4]} intensity={16} color="#8affe9" distance={12} />
         <pointLight position={[-2.6, 1.2, -1.6]} intensity={13} color="#8a7bff" distance={12} />
         <pointLight position={[0, -0.8, 2.2]} intensity={5} color="#4be3d0" distance={8} />
 
-        <Body key={build.sex} build={build} reduced={reduced} />
+        <Suspense fallback={null}>
+          <Body key={build.sex} build={build} reduced={reduced} />
+        </Suspense>
         <Plinth />
         {!reduced && <ScanRing />}
       </Canvas>
     </div>
   )
 }
+
+useGLTF.preload(MODELS.male)
+useGLTF.preload(MODELS.female)

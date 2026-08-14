@@ -1,9 +1,29 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react"
+import { Component, Suspense, lazy, useEffect, useRef, useState } from "react"
+import type { ErrorInfo, ReactNode } from "react"
 import type { Build } from "./Character"
 import { Character } from "./Character"
 import type { Look } from "./Character"
 
 const Character3D = lazy(() => import("./Character3D"))
+
+class Body3DErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("The 3D body failed to render; using the flat figure.", error, info)
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
+}
 
 /**
  * The 3D layer is an enhancement and never a requirement.
@@ -43,8 +63,9 @@ export function BodyView({
   look: Look
   height?: number
 }) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLElement>(null)
   const [show, setShow] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     if (!capable() || !ref.current) return
@@ -78,14 +99,18 @@ export function BodyView({
           licence: "https://creativecommons.org/licenses/by/4.0/",
         }
 
+  const fallback = <Flat build={build} look={look} height={height} />
+
   return (
     <figure ref={ref} style={{ minHeight: height, margin: 0, position: "relative" }}>
-      {show ? (
-        <Suspense fallback={<Flat build={build} look={look} height={height} />}>
-          <Character3D build={build} height={height} />
-        </Suspense>
+      {show && !failed ? (
+        <Body3DErrorBoundary fallback={fallback}>
+          <Suspense fallback={fallback}>
+            <Character3D build={build} height={height} onUnavailable={() => setFailed(true)} />
+          </Suspense>
+        </Body3DErrorBoundary>
       ) : (
-        <Flat build={build} look={look} height={height} />
+        fallback
       )}
       <figcaption
         className="mono"
