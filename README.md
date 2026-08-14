@@ -69,11 +69,14 @@ driven, SMPL via Meshcapade, is a paid service whose underlying model is
 licensed for non-commercial research only. Ready Player Me also sends avatar
 creation through its own servers, which this cannot do.
 
-So the base mesh is free and the honest part is written here. The build step
-measures the mesh's own width at 64 heights; at runtime every horizontal slice
-is scaled by the ratio of your real girth to the mesh's girth at that height.
-Nobody can be rendered narrower than their tape says they are. Chest is inferred
-from waist and reported muscle rather than measured, and it says so.
+So both sex-specific base meshes are free and the honest part is written here.
+Male users get the CC-BY male source; female users get a genuine CC0 MakeHuman
+female generated from the project's female macro targets, not female ratios
+stretched over male anatomy. The build step measures each mesh's own width at
+64 heights; at runtime every horizontal slice is scaled by the ratio of your
+real girth to that mesh's girth. Nobody can be rendered narrower than their tape
+says they are. Chest is inferred from waist and reported muscle rather than
+measured, and it says so.
 
 The muscle anatomy is real too, and is used to show what an exercise trains.
 
@@ -157,7 +160,8 @@ So a user selecting a non-Asian, non-European ancestry should expect the tool to
 
 | Asset | Source | Licence |
 |---|---|---|
-| Body base mesh | "Male base mesh with muscle detail" by C.J..Goldman | CC-BY-4.0, credit required, commercial use allowed |
+| Male body base mesh | "Male base mesh with muscle detail" by C.J..Goldman | CC-BY-4.0, credit required, commercial use allowed |
+| Female body base mesh | MakeHuman hm08 base and female-young macro targets, MakeHuman Team | CC0 1.0, commercial use and redistribution allowed |
 | Muscle and skeleton anatomy | [Open 3D Model of Human Anatomy](https://anatomytool.org/open3dmodel), by anatomists at Leiden UMC, UMC Utrecht, Maastricht UMC, KU Leuven KULAK, Amsterdam UMC, Radboud UMC and Gent | CC BY-SA 4.0 |
 | Population percentiles | NHANES, CDC/NCHS, 2011-2018 | US public domain |
 | Exercise database | [`yuhonas/free-exercise-db`](https://github.com/yuhonas/free-exercise-db) | Unlicense, public domain |
@@ -199,7 +203,11 @@ Regenerating the data and assets, none of which are needed for a normal build:
 
 ```bash
 python3 scripts/build-percentiles.py                       # NHANES percentile tables
-node scripts/build-body.mjs <base-mesh.gltf>               # normalise the body mesh
+node scripts/build-body.mjs <male-mesh.gltf>               # normalise male (default output)
+node scripts/apply-makehuman-targets.mjs <base.obj> <female.obj> <target=weight>...
+npx obj2gltf -i <female.obj> -o <female.glb> --binary
+node scripts/build-body.mjs <female.glb> --name female      # female asset + profile
+node scripts/validate-body-assets.mjs                       # validate both normalised GLBs
 node scripts/build-anatomy.mjs <upper> <lower> --context <skeleton>
 ```
 

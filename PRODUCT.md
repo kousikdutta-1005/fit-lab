@@ -37,7 +37,7 @@ Transformation marketing. Before and after photos. Supplement upsell. Streak gui
 ## Design Principles
 
 1. Honesty cuts both ways. Aiming too high and aiming too low are both errors, and the second one is rarely named.
-2. The character is a mirror, not a fantasy. If it flatters, the whole product is worthless.
+2. The character is a mirror, not a fantasy. If it flatters, the whole product is worthless. The 3D character uses distinct lawful male and female base meshes; female measurements are never applied to male topology.
 3. Show the reasoning and the weakest part of it. Never a bare score.
 4. It tells you where you stand and the next real thing to do. Not what to do every day for twelve weeks.
 5. Measurement error is real and photo estimation is not validated. Show zones and bands, never a precise verdict.

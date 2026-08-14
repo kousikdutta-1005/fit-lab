@@ -62,8 +62,24 @@ export function BodyView({
     return () => io.disconnect()
   }, [])
 
+  const credit =
+    build.sex === "female"
+      ? {
+          label: "Female base: MakeHuman Team · CC0",
+          source:
+            "https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/3dobjs/base.obj",
+          licence:
+            "https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/LICENSE.ASSETS.md",
+        }
+      : {
+          label: "Male base: C.J..Goldman · CC BY 4.0",
+          source:
+            "https://sketchfab.com/3d-models/male-base-mesh-with-muscle-detail-244061a0323b4d2e9c60d9aba374c937",
+          licence: "https://creativecommons.org/licenses/by/4.0/",
+        }
+
   return (
-    <div ref={ref} style={{ minHeight: height }}>
+    <figure ref={ref} style={{ minHeight: height, margin: 0, position: "relative" }}>
       {show ? (
         <Suspense fallback={<Flat build={build} look={look} height={height} />}>
           <Character3D build={build} height={height} />
@@ -71,7 +87,19 @@ export function BodyView({
       ) : (
         <Flat build={build} look={look} height={height} />
       )}
-    </div>
+      <figcaption
+        className="mono"
+        style={{ position: "absolute", right: 8, top: 5, zIndex: 2, fontSize: "0.56rem", opacity: 0.58 }}
+      >
+        <a href={credit.source} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+          {credit.label}
+        </a>
+        {" · "}
+        <a href={credit.licence} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+          licence
+        </a>
+      </figcaption>
+    </figure>
   )
 }
 

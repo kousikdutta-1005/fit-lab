@@ -1,9 +1,8 @@
 /**
  * Prepare the body base mesh.
  *
- * Source: "Male base mesh with muscle detail" by C.J..Goldman, CC-BY-4.0.
- * https://sketchfab.com/3d-models/male-base-mesh-with-muscle-detail-244061a0323b4d2e9c60d9aba374c937
- * Attribution is required and is carried in public/body/LICENSE.txt and in the UI.
+ * Source and licence details for each input are carried in public/body/LICENSE.txt
+ * and in the UI.
  *
  * Why a real mesh at all: a hand-rolled parametric body reads as a mannequin no
  * matter how carefully the proportions are set. A real human mesh, deformed by
@@ -14,7 +13,7 @@
  * fractions, and measures the mesh's own width profile so the runtime knows
  * what it is deforming FROM.
  *
- * Usage: node scripts/build-body.mjs <scene.gltf>
+ * Usage: node scripts/build-body.mjs <scene.gltf|scene.glb> [--name female]
  */
 
 import { NodeIO } from "@gltf-transform/core"
@@ -26,9 +25,17 @@ import { dirname, resolve } from "node:path"
 const SLICES = 64
 
 async function main() {
-  const src = process.argv[2]
+  const args = process.argv.slice(2)
+  const src = args[0]
   if (!src) {
-    console.error("Usage: node scripts/build-body.mjs <scene.gltf>")
+    console.error("Usage: node scripts/build-body.mjs <scene.gltf|scene.glb> [--name female]")
+    process.exit(1)
+  }
+
+  const nameIndex = args.indexOf("--name")
+  const name = nameIndex === -1 ? "male" : args[nameIndex + 1]
+  if (!name || !/^[a-z0-9-]+$/.test(name)) {
+    console.error("Output name must contain only lowercase letters, numbers, and hyphens.")
     process.exit(1)
   }
 
@@ -127,7 +134,9 @@ async function main() {
     }
   }
 
-  const out = resolve("public/body/base.glb")
+  const suffix = name === "male" ? "" : `-${name}`
+  const out = resolve(`public/body/base${suffix}.glb`)
+  const profileOut = resolve(`src/data/body-profile${suffix}.json`)
   mkdirSync(dirname(out), { recursive: true })
   writeFileSync(out, await io.writeBinary(doc))
 
@@ -138,14 +147,14 @@ async function main() {
     halfDepth: halfDepth.map((n) => +n.toFixed(4)),
     torsoHalfWidth: torsoHalfWidth.map((n) => +n.toFixed(4)),
   }
-  writeFileSync(resolve("src/data/body-profile.json"), JSON.stringify(profile, null, 1))
+  writeFileSync(profileOut, JSON.stringify(profile, null, 1))
 
   let verts = 0
   for (const p of prims) verts += p.getAttribute("POSITION").getCount()
 
   console.log(`vertices: ${verts}`)
   console.log(`written: ${out} ${(statSync(out).size / 1024).toFixed(0)} KB`)
-  console.log("profile: src/data/body-profile.json")
+  console.log(`profile: ${profileOut}`)
 }
 
 main().catch((e) => {
