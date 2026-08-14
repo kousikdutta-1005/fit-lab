@@ -7,19 +7,17 @@
  * when the user would like it to.
  *
  * This is principle 2: the character is a mirror, not a fantasy.
+ *
+ * There is no skin tone and no hair here, and that is deliberate. The 3D layer
+ * has always rendered a teal scan rather than a person, so the flat fallback
+ * now matches it. It also settles a problem the old creator had: a palette with
+ * a preselected swatch makes one skin tone the default, and PRODUCT.md says no
+ * body may be treated as the default or the goal state. A scan has no tone to
+ * default to, and the only thing this product claims to show — the shape your
+ * own measurements make — is untouched by dropping the rest.
  */
 
 import type { FlatBodyShape } from "../lib/flat-body"
-
-export type Look = {
-  skin: string
-  hair: string
-  hairStyle: "short" | "medium" | "long" | "tied" | "none"
-  facial: "none" | "stubble" | "beard"
-}
-
-export const SKINS = ["#8d5524", "#c68642", "#e0ac69", "#f1c27d", "#ffdbac", "#5c3317"]
-export const HAIRS = ["#0f0d0c", "#2b1b12", "#4a3728", "#7a5c3e", "#a9a9a9", "#8a2f2f"]
 
 export type Build = {
   sex: "male" | "female"
@@ -41,9 +39,9 @@ export type Build = {
 
 /**
  * Everything below is proportional drawing, not anatomy. It exists to be
- * recognisable enough that a person can compare it to a photo of themselves
- * and say "narrower than that" — which is the only kind of calibration this
- * product can honestly claim.
+ * recognisable enough that a person can compare it to themselves and say
+ * "narrower than that" — which is the only kind of calibration this product can
+ * honestly claim.
  *
  * It is also the fallback, so it has to answer the same measurements the 3D
  * figure does. It cannot answer them as well: it has no mesh to measure and no
@@ -53,12 +51,10 @@ export type Build = {
  */
 export function Character({
   build,
-  look,
   shape,
   height = 320,
 }: {
   build: Build
-  look: Look
   shape: FlatBodyShape
   height?: number
 }) {
@@ -75,42 +71,53 @@ export function Character({
       aria-label={`A figure ${Math.round(heightCm)} centimetres tall, weighing ${Math.round(weightKg)} kilograms, with a waist of about ${Math.round(waistCm)} centimetres and ${muscle > 0.6 ? "muscular" : muscle > 0.3 ? "moderately built" : "lightly built"} limbs.`}
       style={{ display: "block", margin: "0 auto", maxWidth: "100%" }}
     >
+      <defs>
+        {/* One ramp across the whole figure, in user space. Per-element
+            gradients would restart on every limb, and the arms would read as
+            stripes laid over the torso instead of part of the same body. */}
+        <linearGradient id="scan-body" gradientUnits="userSpaceOnUse" x1="60" y1="26" x2="60" y2="196">
+          <stop offset="0%" stopColor="#2fb3a8" />
+          <stop offset="55%" stopColor="#18808a" />
+          <stop offset="100%" stopColor="#0d4d5e" />
+        </linearGradient>
+      </defs>
+
       <g transform={`translate(${cx} 196) scale(${stature.toFixed(3)}) translate(${-cx} -196)`}>
-      {/* legs */}
-      <path
-        d={`M${cx - hip * 0.55} 120 C ${cx - hip * 0.5} 150, ${cx - leg * 1.5} 165, ${cx - leg * 1.35} 196`}
-        stroke={look.skin}
-        strokeWidth={leg * 1.85}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d={`M${cx + hip * 0.55} 120 C ${cx + hip * 0.5} 150, ${cx + leg * 1.5} 165, ${cx + leg * 1.35} 196`}
-        stroke={look.skin}
-        strokeWidth={leg * 1.85}
-        strokeLinecap="round"
-        fill="none"
-      />
+        {/* legs */}
+        <path
+          d={`M${cx - hip * 0.55} 120 C ${cx - hip * 0.5} 150, ${cx - leg * 1.5} 165, ${cx - leg * 1.35} 196`}
+          stroke="url(#scan-body)"
+          strokeWidth={leg * 1.85}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d={`M${cx + hip * 0.55} 120 C ${cx + hip * 0.5} 150, ${cx + leg * 1.5} 165, ${cx + leg * 1.35} 196`}
+          stroke="url(#scan-body)"
+          strokeWidth={leg * 1.85}
+          strokeLinecap="round"
+          fill="none"
+        />
 
-      {/* arms */}
-      <path
-        d={`M${cx - shoulder * 0.92} 62 C ${cx - shoulder * 1.15 - soft * 3} 88, ${cx - shoulder * 1.0} 108, ${cx - shoulder * 0.95} 124`}
-        stroke={look.skin}
-        strokeWidth={arm * 1.35}
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d={`M${cx + shoulder * 0.92} 62 C ${cx + shoulder * 1.15 + soft * 3} 88, ${cx + shoulder * 1.0} 108, ${cx + shoulder * 0.95} 124`}
-        stroke={look.skin}
-        strokeWidth={arm * 1.35}
-        strokeLinecap="round"
-        fill="none"
-      />
+        {/* arms */}
+        <path
+          d={`M${cx - shoulder * 0.92} 62 C ${cx - shoulder * 1.15 - soft * 3} 88, ${cx - shoulder * 1.0} 108, ${cx - shoulder * 0.95} 124`}
+          stroke="url(#scan-body)"
+          strokeWidth={arm * 1.35}
+          strokeLinecap="round"
+          fill="none"
+        />
+        <path
+          d={`M${cx + shoulder * 0.92} 62 C ${cx + shoulder * 1.15 + soft * 3} 88, ${cx + shoulder * 1.0} 108, ${cx + shoulder * 0.95} 124`}
+          stroke="url(#scan-body)"
+          strokeWidth={arm * 1.35}
+          strokeLinecap="round"
+          fill="none"
+        />
 
-      {/* torso: shoulders taper to waist, then out to hips */}
-      <path
-        d={`
+        {/* torso: shoulders taper to waist, then out to hips */}
+        <path
+          d={`
           M${cx - shoulder} 60
           C ${cx - chest - soft * 2} 78, ${cx - waist - soft * 3} 92, ${cx - waist} 106
           C ${cx - waist + 1} 114, ${cx - hip} 116, ${cx - hip} 124
@@ -119,46 +126,21 @@ export function Character({
           C ${cx + waist + soft * 3} 92, ${cx + chest + soft * 2} 78, ${cx + shoulder} 60
           C ${cx + shoulder * 0.6} 54, ${cx - shoulder * 0.6} 54, ${cx - shoulder} 60
           Z`}
-        fill={look.skin}
-      />
-
-      {/* neck + head */}
-      <rect x={cx - neck} y={44} width={neck * 2} height={12} rx={neck * 0.9} fill={look.skin} />
-      <circle cx={cx} cy={34} r={headR} fill={look.skin} />
-
-      {/* hair */}
-      {look.hairStyle !== "none" && (
-        <>
-          <path
-            d={`M${cx - headR - 0.6} 33 A ${headR + 0.6} ${headR + 0.6} 0 0 1 ${cx + headR + 0.6} 33 L ${cx + headR - 1} 30 L ${cx - headR + 1} 30 Z`}
-            fill={look.hair}
-          />
-          {look.hairStyle === "medium" && (
-            <path d={`M${cx - headR - 0.6} 33 q -1 8 1.5 12 l 3 -1 q -2.5 -6 -1.5 -11 Z`} fill={look.hair} />
-          )}
-          {look.hairStyle === "long" && (
-            <>
-              <path d={`M${cx - headR - 0.8} 32 q -2 16 1 26 l 4.5 -1 q -3 -12 -1.5 -25 Z`} fill={look.hair} />
-              <path d={`M${cx + headR + 0.8} 32 q 2 16 -1 26 l -4.5 -1 q 3 -12 1.5 -25 Z`} fill={look.hair} />
-            </>
-          )}
-          {look.hairStyle === "tied" && <circle cx={cx} cy={25.5} r={4} fill={look.hair} />}
-        </>
-      )}
-
-      {look.facial !== "none" && (
-        <path
-          d={`M${cx - headR * 0.78} 36 q ${headR * 0.78} ${look.facial === "beard" ? 11 : 7}, ${headR * 1.56} 0 q -${headR * 0.78} ${look.facial === "beard" ? 6 : 3}, -${headR * 1.56} 0 Z`}
-          fill={look.hair}
-          opacity={look.facial === "stubble" ? 0.45 : 0.92}
+          fill="url(#scan-body)"
         />
-      )}
+
+        {/* neck + head */}
+        {/* The neck runs from behind the middle of the head down into the
+            shoulders, and the head is drawn over it. Anchoring it to the head's
+            centre rather than to its underside means no combination of stature
+            and neck width can leave the head floating. */}
+        <rect x={cx - neck} y={34} width={neck * 2} height={24} rx={neck * 0.9} fill="url(#scan-body)" />
+        <circle cx={cx} cy={34} r={headR} fill="url(#scan-body)" />
       </g>
+
+      {/* One sweep line, so the flat figure reads as the same scan the 3D layer
+          is rather than as a different drawing. */}
+      <line x1={10} x2={110} y1={100} y2={100} stroke="#7bffe9" strokeOpacity={0.22} strokeWidth={0.7} />
     </svg>
   )
-}
-
-/** Shoulder-to-waist is the proportion people read as "built". */
-export function defaultShoulderRatio(sex: "male" | "female"): number {
-  return sex === "male" ? 1.42 : 1.28
 }

@@ -4,191 +4,6 @@ export function Kicker({ children }: { children: ReactNode }) {
   return <p className="kicker">{children}</p>
 }
 
-export function Choice({
-  on,
-  onClick,
-  title,
-  note,
-}: {
-  on: boolean
-  onClick: () => void
-  title: string
-  note?: string
-}) {
-  return (
-    <button type="button" className="choice" aria-pressed={on} onClick={onClick}>
-      <span
-        aria-hidden="true"
-        style={{
-          marginTop: 3,
-          width: 16,
-          height: 16,
-          flex: "0 0 auto",
-          borderRadius: 999,
-          border: `1px solid ${on ? "var(--accent)" : "var(--rule)"}`,
-          background: on ? "var(--accent)" : "transparent",
-          boxShadow: on ? "inset 0 0 0 3px var(--card)" : undefined,
-        }}
-      />
-      <span>
-        <span style={{ display: "block", fontWeight: 500 }}>{title}</span>
-        {note && (
-          <span style={{ display: "block", color: "var(--muted)", fontSize: "0.9rem", marginTop: 2 }}>
-            {note}
-          </span>
-        )}
-      </span>
-    </button>
-  )
-}
-
-export function Number_({
-  label,
-  hint,
-  value,
-  onChange,
-  min,
-  max,
-  suffix,
-}: {
-  label: string
-  hint?: string
-  value: number | ""
-  onChange: (v: number | "") => void
-  min?: number
-  max?: number
-  suffix?: string
-}) {
-  return (
-    <label style={{ display: "block" }}>
-      <span style={{ display: "block", fontWeight: 500, marginBottom: 2 }}>{label}</span>
-      {hint && (
-        <span style={{ display: "block", color: "var(--muted)", fontSize: "0.88rem", marginBottom: 6 }}>
-          {hint}
-        </span>
-      )}
-      <span style={{ position: "relative", display: "block" }}>
-        <input
-          className="field"
-          type="number"
-          inputMode="decimal"
-          min={min}
-          max={max}
-          value={value}
-          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
-          style={{ paddingRight: suffix ? "3rem" : undefined }}
-        />
-        {suffix && (
-          <span
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              right: "0.85rem",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--muted)",
-              fontSize: "0.9rem",
-            }}
-          >
-            {suffix}
-          </span>
-        )}
-      </span>
-    </label>
-  )
-}
-
-export function YesNo({
-  question,
-  value,
-  onChange,
-}: {
-  question: string
-  value: boolean | null
-  onChange: (v: boolean) => void
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: "1rem",
-        alignItems: "flex-start",
-        justifyContent: "space-between",
-        padding: "0.9rem 0",
-        borderBottom: "1px solid var(--rule)",
-        flexWrap: "wrap",
-      }}
-    >
-      <span style={{ flex: "1 1 16rem", minWidth: 0 }}>{question}</span>
-      <span style={{ display: "flex", gap: 6, flex: "0 0 auto" }}>
-        {[
-          { l: "No", v: false },
-          { l: "Yes", v: true },
-        ].map((o) => (
-          <button
-            key={o.l}
-            type="button"
-            onClick={() => onChange(o.v)}
-            aria-pressed={value === o.v}
-            style={{
-              minHeight: 44,
-              minWidth: 62,
-              borderRadius: 999,
-              cursor: "pointer",
-              font: "inherit",
-              fontWeight: 500,
-              border: `1px solid ${value === o.v ? "var(--accent)" : "var(--rule)"}`,
-              background:
-                value === o.v ? "color-mix(in srgb, var(--accent) 12%, var(--card))" : "var(--card)",
-              color: "var(--ink)",
-            }}
-          >
-            {o.l}
-          </button>
-        ))}
-      </span>
-    </div>
-  )
-}
-
-export function Stat({
-  label,
-  value,
-  band,
-  note,
-}: {
-  label: string
-  value: string
-  band?: { label: string; tone: "low" | "ok" | "raised" | "high" }
-  note?: string
-}) {
-  const color =
-    band?.tone === "high" || band?.tone === "low"
-      ? "var(--stop)"
-      : band?.tone === "raised"
-        ? "var(--accent)"
-        : "var(--good)"
-  return (
-    <div style={{ padding: "1rem 0", borderBottom: "1px solid var(--rule)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
-        <span style={{ color: "var(--muted)", fontSize: "0.92rem" }}>{label}</span>
-        <span className="tnum" style={{ fontWeight: 600, fontSize: "1.05rem" }}>
-          {value}
-        </span>
-      </div>
-      {band && (
-        <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 7 }}>
-          <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: 999, background: color, flex: "0 0 auto" }} />
-          <span style={{ color, fontWeight: 500, fontSize: "0.9rem" }}>{band.label}</span>
-        </div>
-      )}
-      {note && (
-        <p style={{ margin: "6px 0 0", color: "var(--muted)", fontSize: "0.92rem", lineHeight: 1.55 }}>{note}</p>
-      )}
-    </div>
-  )
-}
-
 export function Callout({
   tone = "note",
   title,
@@ -198,176 +13,21 @@ export function Callout({
   title: string
   children: ReactNode
 }) {
-  const color = tone === "stop" ? "var(--stop)" : tone === "warn" ? "var(--accent)" : "var(--muted)"
+  const color = tone === "stop" ? "var(--rose)" : tone === "warn" ? "var(--amber)" : "var(--cyan)"
   return (
-    <div
-      className="card"
-      style={{
-        padding: "1.05rem 1.15rem",
-        borderLeft: `3px solid ${color}`,
-      }}
-    >
+    <div className="card" style={{ padding: "0.95rem 1.05rem", borderLeft: `3px solid ${color}` }}>
       <p style={{ margin: 0, fontWeight: 600, color }}>{title}</p>
-      <div style={{ marginTop: 6, color: "var(--muted)", lineHeight: 1.6 }}>{children}</div>
-    </div>
-  )
-}
-
-export function Progress({ step, total }: { step: number; total: number }) {
-  return (
-    <div
-      role="progressbar"
-      aria-valuenow={step}
-      aria-valuemin={1}
-      aria-valuemax={total}
-      aria-label={`Step ${step} of ${total}`}
-      style={{ display: "flex", gap: 5 }}
-    >
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          key={i}
-          style={{
-            height: 3,
-            flex: 1,
-            borderRadius: 999,
-            background: i < step ? "var(--accent)" : "var(--rule)",
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
-export function Slider({
-  label,
-  hint,
-  value,
-  onChange,
-  min,
-  max,
-  step = 1,
-  display,
-}: {
-  label: string
-  hint?: string
-  value: number
-  onChange: (v: number) => void
-  min: number
-  max: number
-  step?: number
-  display?: string
-}) {
-  return (
-    <label style={{ display: "block" }}>
-      <span style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
-        <span style={{ fontWeight: 500 }}>{label}</span>
-        {display && (
-          <span className="tnum" style={{ color: "var(--muted)", fontSize: "0.92rem" }}>
-            {display}
-          </span>
-        )}
-      </span>
-      {hint && (
-        <span style={{ display: "block", color: "var(--muted)", fontSize: "0.86rem", marginTop: 2 }}>{hint}</span>
-      )}
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="tap"
-        style={{ width: "100%", marginTop: 6, accentColor: "var(--cyan)" }}
-      />
-    </label>
-  )
-}
-
-export function Swatches({
-  label,
-  colors,
-  value,
-  onChange,
-}: {
-  label: string
-  colors: string[]
-  value: string
-  onChange: (c: string) => void
-}) {
-  return (
-    <div>
-      <span style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{label}</span>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {colors.map((c) => (
-          <button
-            key={c}
-            type="button"
-            aria-label={c}
-            aria-pressed={value === c}
-            onClick={() => onChange(c)}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 999,
-              background: c,
-              cursor: "pointer",
-              border: value === c ? "2px solid var(--accent)" : "1px solid var(--rule)",
-              boxShadow: value === c ? "0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent)" : undefined,
-            }}
-          />
-        ))}
+      <div style={{ marginTop: 6, color: "var(--muted)", lineHeight: 1.6, fontSize: "0.94rem" }}>
+        {children}
       </div>
     </div>
   )
 }
-
-export function Pills<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string
-  options: { id: T; label: string }[]
-  value: T
-  onChange: (v: T) => void
-}) {
-  return (
-    <div>
-      <span style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>{label}</span>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {options.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            aria-pressed={value === o.id}
-            onClick={() => onChange(o.id)}
-            style={{
-              minHeight: 44,
-              padding: "0 0.9rem",
-              borderRadius: 999,
-              cursor: "pointer",
-              font: "inherit",
-              border: `1px solid ${value === o.id ? "var(--accent)" : "var(--rule)"}`,
-              background:
-                value === o.id ? "color-mix(in srgb, var(--accent) 12%, var(--card))" : "var(--card)",
-              color: "var(--ink)",
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 
 /**
- * Progressive disclosure. The result page is long because the honest answer is
- * long, but a phone should not demand nine screens of scrolling before the
- * reader knows what they were told.
+ * Progressive disclosure. The honest answer is long, and a phone should not
+ * demand nine screens of scrolling before the reader knows what they were
+ * told. Nothing is deleted to achieve that; it is folded, and one tap away.
  *
  * Uses a native details element so it works without JavaScript, is keyboard
  * operable for free, and is announced correctly by screen readers.
@@ -384,79 +44,17 @@ export function Disclosure({
   children: ReactNode
 }) {
   return (
-    <details className="card" open={defaultOpen} style={{ padding: 0, overflow: "hidden" }}>
-      <summary
-        className="tap"
-        style={{
-          listStyle: "none",
-          cursor: "pointer",
-          padding: "1rem 1.15rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "1rem",
-        }}
-      >
+    <details className="card disclosure" open={defaultOpen}>
+      <summary className="disclosure-summary tap">
         <span>
-          <span className="h2" style={{ fontSize: "1.05rem", display: "block" }}>
-            {title}
-          </span>
-          {hint && (
-            <span style={{ color: "var(--muted)", fontSize: "0.88rem", display: "block", marginTop: 2 }}>
-              {hint}
-            </span>
-          )}
+          <span className="disclosure-title">{title}</span>
+          {hint && <span className="disclosure-hint">{hint}</span>}
         </span>
-        <span
-          aria-hidden="true"
-          className="mono"
-          style={{ color: "var(--cyan)", fontSize: "0.72rem", letterSpacing: "0.14em", flex: "0 0 auto" }}
-        >
+        <span aria-hidden="true" className="disclosure-mark mono">
           OPEN
         </span>
       </summary>
-      <div style={{ padding: "0 1.15rem 1.25rem" }}>{children}</div>
+      <div className="disclosure-body">{children}</div>
     </details>
-  )
-}
-
-/** The one thing the reader should see before anything else. */
-export function Headline({
-  label,
-  title,
-  body,
-  tone,
-  children,
-}: {
-  label: string
-  title: string
-  body: string
-  tone: "good" | "warn" | "stop"
-  children?: ReactNode
-}) {
-  const color = tone === "stop" ? "var(--rose)" : tone === "warn" ? "var(--amber)" : "var(--lime)"
-  return (
-    <div
-      className="card"
-      style={{ padding: "1.35rem 1.3rem", borderLeft: `3px solid ${color}`, marginTop: "1.5rem" }}
-    >
-      <p
-        className="mono"
-        style={{
-          margin: 0,
-          color,
-          fontSize: "0.68rem",
-          letterSpacing: "0.2em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </p>
-      <p className="h2" style={{ margin: "0.6rem 0 0" }}>
-        {title}
-      </p>
-      <p style={{ margin: "0.7rem 0 0", color: "var(--muted)", lineHeight: 1.65 }}>{body}</p>
-      {children}
-    </div>
   )
 }

@@ -2,7 +2,6 @@ import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from 
 import type { ErrorInfo, ReactNode } from "react"
 import type { Build } from "./Character"
 import { Character } from "./Character"
-import type { Look } from "./Character"
 import { bodyPresentation } from "../lib/flat-body"
 import type { BodyProfile } from "../lib/body-profile"
 import femaleProfile from "../data/body-profile-female.json"
@@ -64,11 +63,9 @@ function capable(): boolean {
 
 export function BodyView({
   build,
-  look,
   height = 400,
 }: {
   build: Build
-  look: Look
   height?: number
 }) {
   const ref = useRef<HTMLElement>(null)
@@ -125,7 +122,7 @@ export function BodyView({
           licence: "https://creativecommons.org/licenses/by/4.0/",
         }
 
-  const fallback = <Flat build={build} look={look} shape={presentation.flat} height={height} />
+  const fallback = <Flat build={build} shape={presentation.flat} height={height} />
 
   return (
     <figure ref={ref} style={{ minHeight: height, margin: 0, position: "relative" }}>
@@ -179,18 +176,16 @@ export function BodyView({
 
 function Flat({
   build,
-  look,
   shape,
   height,
 }: {
   build: Build
-  look: Look
   shape: ReturnType<typeof bodyPresentation>["flat"]
   height: number
 }) {
   return (
     <div style={{ display: "grid", placeItems: "center", height }}>
-      <Character build={build} look={look} shape={shape} height={height * 0.82} />
+      <Character build={build} shape={shape} height={height * 0.82} />
     </div>
   )
 }

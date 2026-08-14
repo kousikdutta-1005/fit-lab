@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
+import type { ThreeEvent } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import type { MuscleId } from "../data/exercises"
@@ -17,7 +18,7 @@ const MODEL = `${import.meta.env.BASE_URL}anatomy/muscles.glb`
  * is why the materials here are explicitly double sided: without that, the
  * mirrored half renders inside out and reads as black.
  */
-function Muscles({ active }: { active: MuscleId[] }) {
+function Muscles({ active, onToggle }: { active: MuscleId[]; onToggle?: (id: MuscleId) => void }) {
   const { scene } = useGLTF(MODEL)
   const spin = useRef<THREE.Group>(null)
 
@@ -111,14 +112,43 @@ function Muscles({ active }: { active: MuscleId[] }) {
     if (spin.current) spin.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.22) * 0.75
   })
 
+  /**
+   * Picking a muscle off the model itself.
+   *
+   * Every mesh carries its group as a name prefix, written by
+   * scripts/build-anatomy.mjs, so the raycast hit is already the answer. The
+   * chips below the scene do the same job for keyboard and for anybody whose
+   * device never loads this canvas, so nothing here is the only way in.
+   */
+  const pick = (event: ThreeEvent<MouseEvent>) => {
+    if (!onToggle) return
+    const group = (event.object as THREE.Mesh).name.split("__")[0]
+    if (!group || group === "context") return
+    event.stopPropagation()
+    onToggle(group as MuscleId)
+  }
+
   return (
     <group ref={spin}>
-      <primitive object={figure} />
+      <primitive
+        object={figure}
+        onClick={pick}
+        onPointerOver={onToggle ? () => (document.body.style.cursor = "pointer") : undefined}
+        onPointerOut={onToggle ? () => (document.body.style.cursor = "") : undefined}
+      />
     </group>
   )
 }
 
-export default function MuscleScene({ active, height }: { active: MuscleId[]; height: number }) {
+export default function MuscleScene({
+  active,
+  height,
+  onToggle,
+}: {
+  active: MuscleId[]
+  height: number
+  onToggle?: (id: MuscleId) => void
+}) {
   return (
     <div style={{ height, width: "100%" }}>
       <Canvas dpr={[1, 1.7]} camera={{ position: [0, 0, 3.9], fov: 42 }} gl={{ antialias: true, alpha: true }}>
@@ -130,7 +160,7 @@ export default function MuscleScene({ active, height }: { active: MuscleId[]; he
         <directionalLight position={[-3.5, 1.5, -2.5]} intensity={2.2} color="#4be3d0" />
         <pointLight position={[0, -1.2, 3]} intensity={9} color="#ff7a6b" distance={11} />
         <pointLight position={[0, 2.4, -2.5]} intensity={7} color="#8a7bff" distance={11} />
-        <Muscles active={active} />
+        <Muscles active={active} onToggle={onToggle} />
       </Canvas>
     </div>
   )

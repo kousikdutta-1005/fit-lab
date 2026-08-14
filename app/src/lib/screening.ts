@@ -10,8 +10,8 @@
  * This is not a diagnosis and it is not a clinical instrument.
  */
 
-import type { Profile } from "./calc"
-import { bmi, round } from "./calc"
+import type { Profile } from "./calc.ts"
+import { bmi, round } from "./calc.ts"
 
 export type HealthAnswers = {
   /** Chest pain at rest or on light activity. */
@@ -55,6 +55,88 @@ export const SCOFF_QUESTIONS = [
 
 export function scoffScore(answers: boolean[]): number {
   return answers.filter(Boolean).length
+}
+
+/**
+ * Short tags shown beside the verbatim SCOFF wording, purely so five questions
+ * can be scanned rather than read as a paragraph. The published question is
+ * always displayed with its tag; nothing here replaces it. Changing the wording
+ * of a validated instrument would change what it measures.
+ */
+export const SCOFF_TAGS = [
+  "Making yourself sick",
+  "Losing control",
+  "Recent weight loss",
+  "Thin or fat",
+  "Food and your life",
+]
+
+/**
+ * The readiness questions, each with a short label for scanning and the full
+ * question underneath it. The semantics are the ones the PAR-Q+ framework and
+ * the 2015 ACSM revision ask for, and the ids match HealthAnswers exactly, so
+ * a card that is ticked is a yes and nothing else.
+ */
+export type ReadinessId =
+  | "chestPain"
+  | "faintness"
+  | "supervisedOnly"
+  | "heartOrBp"
+  | "chronic"
+  | "jointProblem"
+  | "pregnant"
+
+export const READINESS: {
+  id: ReadinessId
+  short: string
+  question: string
+  /** Only asked where it can apply. */
+  femaleOnly?: boolean
+  /** Selecting this opens the condition list, which tailors the advice. */
+  opensConditions?: boolean
+}[] = [
+  {
+    id: "chestPain",
+    short: "Chest pain",
+    question: "At rest, or during light everyday activity.",
+  },
+  {
+    id: "faintness",
+    short: "Dizziness or fainting",
+    question: "In the last 12 months, lost your balance from dizziness or lost consciousness.",
+  },
+  {
+    id: "supervisedOnly",
+    short: "Told to train supervised",
+    question: "A doctor has said you should only exercise under medical supervision.",
+  },
+  {
+    id: "heartOrBp",
+    short: "Heart or blood pressure",
+    question: "A doctor has diagnosed a heart condition or high blood pressure.",
+    opensConditions: true,
+  },
+  {
+    id: "chronic",
+    short: "Long-term condition",
+    question: "Any other long-term diagnosed condition.",
+    opensConditions: true,
+  },
+  {
+    id: "jointProblem",
+    short: "Bone, joint or muscle",
+    question: "A problem that could get worse with activity.",
+  },
+  {
+    id: "pregnant",
+    short: "Pregnant or postpartum",
+    question: "Currently pregnant, or within twelve weeks of giving birth.",
+    femaleOnly: true,
+  },
+]
+
+export function readinessItems(sex: "male" | "female") {
+  return READINESS.filter((item) => !item.femaleOnly || sex === "female")
 }
 
 export type ConditionId =

@@ -1,6 +1,6 @@
 # fit-lab
 
-fit-lab is a free tool that gives you an honest read on yourself. You build a character that looks like you, check it against a photo so it stays honest, and get back an assessment of your body, health, diet, habits and how you come across — with the reasoning shown and the uncertainty admitted. It runs entirely in your browser. It is not a chat interface and it is not a subscription.
+fit-lab is a free tool that gives you an honest read on yourself. You build a body from your own measurements and watch it answer the tape, and you get back an assessment of where you stand, whether your goal is reachable, and what is worth your time — with the reasoning shown and the uncertainty admitted. It runs entirely in your browser. It is not a chat interface and it is not a subscription.
 ## Why it is free, and why that is the point
 
 Every product aimed at a young person who wants to look better is paid for by that person's insecurity. Apps sell subscriptions. Coaches sell plans. Supplement brands sell powder. Creators sell a physique they were partly born with and partly did not build the way they claim.
@@ -11,11 +11,15 @@ I checked the market. Fitbod, Freeletics, Dr. Muscle, Caliber, Boostcamp, Alpha 
 
 ## How it works
 
-1. **Build the character.** Height, weight, age, sex, waist, neck, hip, and the choices you make in the creator. Optionally your ancestry and country. A tape measure, not a smart scale.
-2. **Check it against a photo.** A full-body photo, processed on your device and never uploaded. This calibrates the character so it resembles you rather than who you would like to be. Read the limits of this below, because they are significant.
-3. **Screen for safety.** Physical readiness before any goal, and a screen for disordered eating before any body-composition target. Both gates come before the assessment, not after it.
-4. **Reality-check the goal, in both directions.** Too high is the obvious failure. Too low is the common one, and nobody names it.
-5. **Show the highest-leverage change in each area.** Body, health, diet, habits, and presentation. One real next thing per area, not a schedule.
+There are three moments where you give it anything, and the rule for all three is that a question that changes no output does not get asked.
+
+1. **The body.** Sex at birth, age, height, weight, waist, neck, and hip for women because that is the only place the formula uses it. A tape measure, not a smart scale. The figure holds the screen and answers each reading as you set it.
+2. **Safety.** Physical readiness before any goal, and a screen for disordered eating before any body-composition target. Both gates come before the assessment, not after it. Two groups of tick-what-applies cards, each of which has to be closed explicitly: an untouched group is never recorded as a no.
+3. **The goal.** Conditional on the goal itself. A target weight and a timeline appear for fat loss and muscle gain, because together they are a rate; training history appears for muscle gain, because that is the one place it changes the rate; where you train appears for everybody, because it decides which exercises exist for you. Nothing else.
+
+Then the read: whether the goal is reachable and how long it honestly takes, where every number places you against 71,543 measured adults, and the exercises worth your time shown on real anatomy.
+
+**Asked for, and then removed.** A photo step, a character creator with skin, hair and facial hair, sliders asking you to guess your own shoulder width and muscle mass, and a ten-question personality inventory. None of them changed a number on the result page. The shortest honest description of that flow is that it asked for twenty-eight things in order to use nine. Ancestry survives as an optional refinement offered *after* the read, next to the two thresholds it actually moves.
 
 ## What it is not
 
@@ -23,17 +27,15 @@ fit-lab is an assessment, not a programme generator. It will not tell you what t
 
 That is a decision, not a gap. As a programme it competes with Fitbod and Freeletics on scheduling logic. As an honest read on a person it competes with nobody. The programme layer may come later, once the assessment has earned the trust to deserve one.
 
-## On the personality part
+## Why there is no personality test
 
-This is the part most likely to be nonsense in other products, so here is exactly what it rests on.
+There used to be one: the TIPI, ten questions, Big Five, scored and drawn as a radar on the result page. It is gone, and the reason is worth recording rather than quietly deleting.
 
-It uses the Big Five, which is the empirically derived trait model, not MBTI or Enneagram, which are not. Traits do change in adulthood: conscientiousness and emotional stability rise most between roughly 20 and 40 (Roberts, Walton & Viechtbauer 2006). People can shift their own traits deliberately, and the intervention that worked did so through if-then implementation intentions rather than intention alone (Hudson & Fraley 2015).
+The evidence behind it was never the problem. The Big Five is the empirically derived trait model, not MBTI or Enneagram. Traits do change in adulthood (Roberts, Walton & Viechtbauer 2006), people can shift them deliberately through if-then implementation intentions (Hudson & Fraley 2015), and conscientiousness is negatively associated with every major risky health behaviour across 194 studies (Bogg & Roberts 2004). All of that is still true.
 
-The honest size of that effect is d ≈ 0.37 over about 24 weeks, mostly measured in clinical populations, mostly by self-report (Roberts et al. 2017). That is real and it is modest. It is not a personality overhaul, and anyone promising you one is selling something.
+The problem is that it was ten questions whose answers changed nothing. No verdict moved, no threshold moved, no exercise changed. It produced a paragraph about the person and then the assessment carried on exactly as it would have without it. The honest size of the effect it was gesturing at is d ≈ 0.37 over about 24 weeks, mostly in clinical populations, mostly measured by the same self-report scales the participants were trying to move (Roberts et al. 2017), which is a thin basis for a fifth of the onboarding.
 
-The reason it is in the product at all is conscientiousness. It is negatively associated with every major risky health behaviour and positively with diet and physical activity across 194 studies (Bogg & Roberts 2004), and childhood conscientiousness predicted survival across seven decades of the Terman cohort (Friedman et al. 1993, 1995). It is the single trait most worth a young person's attention, and it happens to be one of the two that move most in your twenties.
-
-So the product addresses habits and behaviour, which change. It does not tell you who to be.
+A product that cannot afford to flatter you also cannot afford to charge you ten questions for a paragraph. If a habits layer ever arrives with something that acts on the answer, this can come back. It has not been replaced with another quiz.
 
 ## On ancestry and country
 
@@ -110,15 +112,17 @@ at every setting, that feet stay on the floor, that no cross-section becomes a
 plank or a barrel, that neighbouring vertices are never torn apart, and that
 nothing anywhere goes to infinity.
 
-The muscle anatomy is real too, and is used to show what an exercise trains.
+The muscle anatomy is real too, and is used to show what an exercise trains. On the goal screen you pick muscles off the model itself; the buttons underneath do the same job for the keyboard and for any device that never loads the canvas.
+
+The figure has no skin tone and no hair, and that is deliberate rather than unfinished. The 3D layer always rendered a teal scan, and the flat fallback now matches it. It also settles a problem the old character creator had: a palette with a preselected swatch makes one skin tone the default, and PRODUCT.md says no body may be treated as the default or the goal state. A scan has no tone to default to, and the only thing this product claims to show — the shape your own measurements make — is untouched by dropping the rest.
 
 ## What it refuses to do
 
 - It does not diagnose. Screening is not diagnosis.
 - It does not sell anything. No supplements, no coaching, no premium tier, no affiliate links.
-- It does not upload, store or transmit anything, including your photo.
+- It does not upload, store or transmit anything. There is no account, no server call, and no photo, because it never asks for one.
 - It does not promise a timeline the evidence cannot support.
-- It does not present a photo estimate as a measurement.
+- It does not present a guess as a measurement, which is why it stopped asking you to guess your own shoulder width and muscle mass.
 - It does not adjust anything by ancestry that the evidence does not support.
 - It does not punish you for a missed day.
 - It does not rank you against other users.
@@ -154,6 +158,8 @@ The muscle anatomy is real too, and is used to show what an exercise trains.
 
 **Behaviour and personality**
 
+These no longer drive anything in the product; the trait questionnaire was removed. They are kept because they are the evidence a habits layer would have to be built on, and because deleting the citations would hide why the feature was dropped.
+
 | What | Source | Note |
 |---|---|---|
 | Big Five as the trait model | Goldberg, *Am Psychol* 1993;48(1):26–34, PMID 8427480 | Verified |
@@ -170,11 +176,11 @@ The muscle anatomy is real too, and is used to show what an exercise trains.
 
 ## Known limits
 
-**The photo cannot measure you.** There is no validated peer-reviewed evidence that a standard 2D photograph estimates body fat percentage accurately enough for an individual. Even a purpose-built 3D AI scanning app achieves only group-level accuracy with limited individual precision (Poltronieri et al., *Clin Nutr ESPEN* 2026;73:103105, PMID 41812768). So the photo calibrates how the character looks. It does not produce a number, and any product telling you it can is overclaiming.
+**A photo cannot measure you, which is why there is no photo step.** There is no validated peer-reviewed evidence that a standard 2D photograph estimates body fat percentage accurately enough for an individual. Even a purpose-built 3D AI scanning app achieves only group-level accuracy with limited individual precision (Poltronieri et al., *Clin Nutr ESPEN* 2026;73:103105, PMID 41812768). The step used to exist as a way of eyeballing the figure against yourself. It produced no number, so it changed nothing on the result page, and asking somebody to undress in front of a camera to change nothing is not a trade worth offering.
 
 **The avatar idea is a hypothesis, not a proven mechanism.** The Proteus effect suggests people adopt behaviour consistent with their avatar, but that support comes from short lab studies, and no RCT shows avatar use in a health app produces sustained behaviour change. It could also backfire: avatar creation involving an idealised body can feed negative comparison. I think a mirror-avatar avoids that trap by refusing to idealise. I do not have evidence that I am right.
 
-**Personality change is modest and mostly self-reported.** d ≈ 0.37, largely in clinical populations, measured with the same self-report scales the participants were trying to move. Durability past a few months is unproven, and traits are roughly 40–60% heritable. The strong version of this claim is not supported.
+**Personality change is modest and mostly self-reported.** d ≈ 0.37, largely in clinical populations, measured with the same self-report scales the participants were trying to move. Durability past a few months is unproven, and traits are roughly 40–60% heritable. The strong version of this claim is not supported, and it is the reason the trait questionnaire was removed rather than reworded.
 
 **Gamification has no proven health benefit.** The systematic review found gamification inconsistently implemented and unproven as a driver of outcomes. I am using game mechanics because they make an assessment readable and not shameful, not because evidence says they make you healthier.
 

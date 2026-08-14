@@ -1,10 +1,11 @@
-import { Callout, Disclosure, Headline, Kicker } from "../components/ui"
+import { Callout, Disclosure, Kicker } from "../components/ui"
 import { BodyView } from "../components/BodyView"
 import { MuscleView } from "../components/MuscleView"
-import { Gauge, Radar, Timeline } from "../components/viz"
+import { Glyph, Tiles } from "../components/controls"
+import { DEFAULT_MUSCLE, defaultShoulderRatio } from "../lib/figure"
+import { Gauge, Timeline, ValueChip, VerdictCard } from "../components/viz"
 import { PERCENTILE_SOURCE, context, percentileOf } from "../lib/percentiles"
-import type { Look } from "../components/Character"
-import type { Profile } from "../lib/calc"
+import type { Ancestry, Profile } from "../lib/calc"
 import {
   bmi,
   bmiBand,
@@ -19,7 +20,6 @@ import {
   whtr,
   whtrBand,
 } from "../lib/calc"
-import { PERSONALITY_CAVEAT, scoreTipi } from "../lib/personality"
 import type { Intent } from "../lib/goals"
 import { assess } from "../lib/goals"
 import type { HealthAnswers } from "../lib/screening"
@@ -27,12 +27,39 @@ import { screen } from "../lib/screening"
 import type { MuscleId, Place } from "../data/exercises"
 import { MUSCLES, gapFor, pickExercises } from "../data/exercises"
 
+/**
+ * The read.
+ *
+ * The order is the argument: the verdict, then the safety line, then the
+ * figures as gauges, then the body as evidence, then what to actually do. Every
+ * factual claim and every caveat that was on this page before is still on it.
+ * What changed is that the long ones are folded into disclosures instead of
+ * being stacked in front of the thing the reader came for.
+ *
+ * Nothing was invented and nothing necessary was cut. Where a number is rough,
+ * the gauge still says so, one tap away, next to the number rather than in a
+ * paragraph four screens down.
+ */
+
 const VERDICT_LABEL: Record<string, string> = {
   impossible: "Not achievable as stated",
   "too-fast": "Achievable, but not this fast",
   realistic: "Achievable",
-  "too-slow": "Achievable, and you are aiming below yourself",
+  "too-slow": "Achievable, and aiming below yourself",
   "under-powered": "The plan will not deliver the goal",
+}
+
+const ANCESTRIES: { id: Ancestry; label: string }[] = [
+  { id: "south-asian", label: "South Asian" },
+  { id: "east-asian", label: "East or South-East Asian" },
+  { id: "other", label: "Something else" },
+  { id: "unsaid", label: "Rather not say" },
+]
+
+/** Print with every disclosure opened, or the page prints as headlines only. */
+function printAll() {
+  for (const d of Array.from(document.querySelectorAll("details"))) d.open = true
+  window.print()
 }
 
 export function Result({
@@ -41,10 +68,8 @@ export function Result({
   intent,
   place,
   focus,
-  look,
-  shoulderRatio,
-  muscle,
-  tipi,
+  ancestry,
+  onAncestry,
   onRestart,
 }: {
   profile: Profile
@@ -52,38 +77,37 @@ export function Result({
   intent: Intent
   place: Place
   focus: MuscleId[]
-  look: Look
-  shoulderRatio: number
-  muscle: number
-  tipi: number[]
+  ancestry: Ancestry
+  /** Optional, after the fact, and it really does move the thresholds. */
+  onAncestry: (a: Ancestry) => void
   onRestart: () => void
 }) {
   const scr = screen(profile, health)
 
   if (scr.kind === "stop") {
     return (
-      <div className="wrap" style={{ paddingTop: "3.5rem", paddingBottom: "5rem" }}>
-        <Kicker>Where this stops</Kicker>
-        <h1 className="display" style={{ margin: "0.6rem 0 1rem" }}>
-          {scr.title}
-        </h1>
-        <p className="lede">{scr.body}</p>
-        <div className="card" style={{ padding: "1.15rem", marginTop: "1.5rem", borderLeft: "3px solid var(--stop)" }}>
-          <ul style={{ margin: 0, paddingLeft: "1.1rem", display: "grid", gap: "0.7rem" }}>
+      <div className="read">
+        <header className="read-head">
+          <Kicker>Where this stops</Kicker>
+        </header>
+        <VerdictCard label="Stop" title={scr.title} tone="stop" />
+        <p className="read-lede">{scr.body}</p>
+        <div className="card stop-list">
+          <ul>
             {scr.reasons.map((r) => (
-              <li key={r} style={{ lineHeight: 1.6 }}>
-                {r}
-              </li>
+              <li key={r}>{r}</li>
             ))}
           </ul>
         </div>
-        <p style={{ color: "var(--muted)", marginTop: "1.5rem", lineHeight: 1.65 }}>
+        <p className="read-note">
           None of this means you cannot train. It means the first step is a person who can examine you, not a
           form on a website. Come back after that and this will still be here.
         </p>
-        <button className="btn btn-quiet" onClick={onRestart} style={{ marginTop: "1.5rem" }}>
-          Start again
-        </button>
+        <div className="read-actions">
+          <button type="button" className="btn btn-quiet tap" onClick={onRestart}>
+            Start again
+          </button>
+        </div>
       </div>
     )
   }
@@ -99,76 +123,92 @@ export function Result({
   const index = lean === null ? null : ffmi(lean, profile.heightCm)
   const ceiling = ffmiCeiling(profile.sex)
   const verdict = assess(profile, intent, bfMid ?? 25)
-  const traits = scoreTipi(tipi)
-
   const gap = gapFor(place)
 
   return (
-    <div className="wrap" style={{ paddingTop: "3.5rem", paddingBottom: "5rem" }}>
-      <Kicker>Your read</Kicker>
-      <h1 className="display" style={{ margin: "0.6rem 0 1rem" }}>
-        Here is where you <em>actually</em> stand.
-      </h1>
-      <p className="lede">
-        Nothing on this page was sent anywhere. It was all worked out on your own device, and it disappears when
-        you close the tab.
-      </p>
+    <div className="read">
+      <header className="read-head">
+        <Kicker>Your read</Kicker>
+        <button type="button" className="ghost tap" onClick={onRestart}>
+          Start again
+        </button>
+      </header>
 
-      <Headline
+      <VerdictCard
         label={VERDICT_LABEL[verdict.verdict]}
         title={verdict.headline}
-        tone={
-          verdict.verdict === "impossible" ? "stop" : verdict.verdict === "realistic" ? "good" : "warn"
-        }
-        body={verdict.detail}
+        tone={verdict.verdict === "impossible" ? "stop" : verdict.verdict === "realistic" ? "good" : "warn"}
       >
-        {verdict.honestWeeks && <Timeline wanted={intent.weeks} honest={verdict.honestWeeks} />}
-      </Headline>
+        {verdict.honestWeeks && intent.weeks !== undefined && (
+          <Timeline wanted={intent.weeks} honest={verdict.honestWeeks} />
+        )}
+        <details className="why">
+          <summary className="why-summary tap">The reasoning</summary>
+          <p className="why-body">{verdict.detail}</p>
+        </details>
+      </VerdictCard>
 
-      <div className="card scanline" style={{ padding: "0.5rem", marginTop: "1.5rem", overflow: "hidden" }}>
-        <BodyView
-          build={{
-            sex: profile.sex,
-            heightCm: profile.heightCm,
-            weightKg: profile.weightKg,
-            waistCm: profile.waistCm,
-            neckCm: profile.neckCm,
-            hipCm: profile.sex === "female" ? profile.hipCm : 0,
-            shoulderRatio,
-            muscle,
-            bodyFat: bfMid ?? 22,
-          }}
-          look={look}
-          height={380}
-        />
+      <div className="chipstrip">
+        <ValueChip label="BMI" value={String(round(value))} tone={bBand.tone} />
+        <ValueChip label="Waist ÷ height" value={round(ratio, 2).toFixed(2)} tone={wBand.tone} />
+        {bf && <ValueChip label="Body fat" value={`${round(bf.low, 0)}–${round(bf.high, 0)}%`} />}
       </div>
 
-      {/* Safety first, always, per the design principles. */}
-      <section style={{ marginTop: "2.5rem" }}>
-        <Callout tone={scr.kind === "caution" ? "warn" : "note"} title={scr.title}>
-          <p style={{ margin: 0 }}>{scr.body}</p>
-        </Callout>
+      {/* Safety first, always, per the design principles. A caution is never
+          folded away; only its longer notes are. */}
+      <section className="read-section">
+        {scr.kind === "caution" ? (
+          // A caution is a warning, so it is never folded.
+          <Callout tone="warn" title={scr.title}>
+            <p style={{ margin: 0 }}>{scr.body}</p>
+          </Callout>
+        ) : (
+          // A clear screen is fully said by its own title. The paragraph
+          // explaining why the guidance changed in 2015 is worth keeping and
+          // is not worth the top of the page.
+          <Disclosure title={scr.title}>
+            <p className="why-body">{scr.body}</p>
+          </Disclosure>
+        )}
         {scr.notes.length > 0 && (
-          <div style={{ display: "grid", gap: "0.85rem", marginTop: "0.85rem" }}>
+          <div className="notes">
             {scr.notes.map((n) => (
-              <div key={n.title} className="card" style={{ padding: "1rem 1.1rem" }}>
-                <p style={{ margin: 0, fontWeight: 600 }}>{n.title}</p>
-                <p style={{ margin: "5px 0 0", color: "var(--muted)", lineHeight: 1.6 }}>{n.body}</p>
-              </div>
+              <Disclosure key={n.title} title={n.title} hint="What to do about it">
+                <p className="why-body">{n.body}</p>
+              </Disclosure>
             ))}
           </div>
         )}
       </section>
 
-      <section style={{ marginTop: "3rem" }}>
-        <h2 className="h2">Where you actually stand</h2>
-        <p style={{ color: "var(--muted)", marginTop: "0.4rem", lineHeight: 1.6 }}>
-          Every number here is placed against {" "}
-          <strong style={{ color: "var(--ink)" }}>71,543 real people</strong>, measured by the US national
-          health survey. A tape is out by two to five centimetres in ordinary use, so the lit band is the
-          honest range rather than a single confident number.
-        </p>
-        <div style={{ marginTop: "1.2rem", display: "grid", gap: "0.85rem" }}>
+      <section className="read-section">
+        <div className="card evidence scanline">
+          <BodyView
+            build={{
+              sex: profile.sex,
+              heightCm: profile.heightCm,
+              weightKg: profile.weightKg,
+              waistCm: profile.waistCm,
+              neckCm: profile.neckCm,
+              hipCm: profile.sex === "female" ? profile.hipCm : 0,
+              shoulderRatio: defaultShoulderRatio(profile.sex),
+              muscle: DEFAULT_MUSCLE,
+              bodyFat: bfMid ?? 22,
+            }}
+            height={330}
+          />
+          <p className="scene-strip mono">
+            {`${profile.heightCm}cm · ${profile.weightKg}kg · waist ${profile.waistCm} · neck ${profile.neckCm}${profile.sex === "female" ? ` · hip ${profile.hipCm}` : ""}`}
+          </p>
+        </div>
+      </section>
+
+      <section className="read-section">
+        <div className="section-head">
+          <Glyph name="target" size={16} />
+          <h2 className="section-title">Where you stand</h2>
+        </div>
+        <div className="gauges">
           <Gauge
             label="BMI"
             value={round(value)}
@@ -263,14 +303,8 @@ export function Result({
         </div>
       </section>
 
-      <section style={{ marginTop: "1.4rem" }}>
-        <p style={{ color: "var(--faint)", fontSize: "0.82rem", lineHeight: 1.55, margin: 0 }}>
-          Percentiles from {PERCENTILE_SOURCE.label}. {PERCENTILE_SOURCE.detail}
-        </p>
-      </section>
-
       {verdict.flags.length > 0 && (
-        <section style={{ marginTop: "2.2rem", display: "grid", gap: "0.85rem" }}>
+        <section className="read-section notes">
           {verdict.flags.map((f) => (
             <Callout key={f.title} tone={f.severity === "warn" ? "warn" : "note"} title={f.title}>
               <p style={{ margin: 0 }}>{f.body}</p>
@@ -279,63 +313,49 @@ export function Result({
         </section>
       )}
 
-      <section style={{ marginTop: "2.2rem" }}>
-        <h2 className="h2">What to actually do</h2>
-        <p style={{ color: "var(--muted)", marginTop: "0.4rem" }}>
-          These are not ranked by muscle activation studies. Activation is not growth. They are ranked on whether
-          you can keep making them harder, whether they load the muscle in a stretched position, whether they are
-          safe on your own, and whether you can get at the equipment.
-        </p>
-
-        <div className="card" style={{ padding: "0.4rem", marginTop: "1.4rem", overflow: "hidden" }}>
-          <MuscleView active={focus} height={320} />
-          <p
-            className="mono"
-            style={{
-              margin: "0 0 0.5rem 0.9rem",
-              fontSize: "0.6rem",
-              letterSpacing: "0.16em",
-              textTransform: "uppercase",
-              color: "var(--faint)",
-            }}
-          >
-            Lit in red: what you picked. Open 3D Model of Human Anatomy, CC BY-SA 4.0
-          </p>
+      <section className="read-section">
+        <div className="section-head">
+          <Glyph name="dumbbell" size={16} />
+          <h2 className="section-title">What to do</h2>
         </div>
 
-        <div style={{ marginTop: "1.4rem", display: "grid", gap: "1.4rem" }}>
+        <div className="card evidence">
+          <MuscleView active={focus} height={300} />
+          <p className="scene-strip mono">Lit in red: what you picked</p>
+        </div>
+
+        <div className="picks">
           {focus.map((id) => {
             const muscle = MUSCLES.find((m) => m.id === id)
             const picks = pickExercises(id, place)
             if (!muscle) return null
             return (
-              <div key={id}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "0.6rem" }}>
-                  <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600 }}>{muscle.label}</h3>
-                  <span style={{ color: "var(--muted)", fontSize: "0.88rem" }}>{muscle.plain}</span>
+              <div key={id} className="pick">
+                <div className="pick-head">
+                  <h3 className="pick-title">{muscle.label}</h3>
+                  <span className="pick-plain">{muscle.plain}</span>
                 </div>
                 {picks.length === 0 ? (
-                  <p style={{ color: "var(--muted)", marginTop: "0.5rem" }}>
+                  <p className="read-note">
                     Nothing here can be trained properly with what you have. That is the honest answer rather
                     than a bad substitute.
                   </p>
                 ) : (
-                  <ol style={{ margin: "0.6rem 0 0", padding: 0, listStyle: "none", display: "grid", gap: "0.55rem" }}>
+                  <ol className="exlist">
                     {picks.map((e, i) => (
-                      <li key={e.id} className="card" style={{ padding: "0.85rem 1rem", display: "flex", gap: "0.8rem" }}>
-                        <span
-                          className="tnum"
-                          aria-hidden="true"
-                          style={{ color: "var(--muted)", fontWeight: 600, flex: "0 0 auto" }}
-                        >
-                          {i + 1}
-                        </span>
-                        <span>
-                          <span style={{ display: "block", fontWeight: 500 }}>{e.name}</span>
-                          <span style={{ display: "block", color: "var(--muted)", fontSize: "0.92rem", marginTop: 2, lineHeight: 1.55 }}>
-                            {e.why}
-                          </span>
-                        </span>
+                      <li key={e.id} className="card ex">
+                        <details>
+                          <summary className="ex-summary tap">
+                            <span className="ex-index tnum" aria-hidden="true">
+                              {i + 1}
+                            </span>
+                            <span className="ex-name">{e.name}</span>
+                            <span className="ex-mark mono" aria-hidden="true">
+                              WHY
+                            </span>
+                          </summary>
+                          <p className="why-body">{e.why}</p>
+                        </details>
                       </li>
                     ))}
                   </ol>
@@ -346,7 +366,7 @@ export function Result({
         </div>
 
         {gap && (
-          <div style={{ marginTop: "1.6rem" }}>
+          <div className="read-section">
             <Callout tone="warn" title="What your setup cannot do">
               <p style={{ margin: 0 }}>{gap}</p>
             </Callout>
@@ -354,62 +374,72 @@ export function Result({
         )}
       </section>
 
-      <section style={{ marginTop: "2.2rem" }}>
-        <Disclosure title="How you are built on the inside" hint="Ten questions, read as a sketch">
-        <p style={{ color: "var(--muted)", marginTop: "0.4rem", lineHeight: 1.6 }}>{PERSONALITY_CAVEAT}</p>
-        <div className="card" style={{ padding: "1.2rem", marginTop: "1.2rem", display: "grid", placeItems: "center" }}>
-          <Radar
-            points={traits.map((tr) => ({
-              label: tr.label === "Conscientiousness" ? "Follow-through" : tr.label,
-              value: tr.score,
-              highlight: tr.trait === "conscientiousness",
-            }))}
+      <section className="read-section notes">
+        <Disclosure title="Refine the thresholds" hint="Optional. Ancestry moves two of the lines above">
+          <p className="why-body">
+            Asked for one reason: the healthy thresholds genuinely differ. Asian bodies carry at a BMI of 23
+            roughly the risk European bodies carry at 25, so one number for everyone quietly tells some people
+            they are fine when they are not. It changes the BMI and waist lines on this page and nothing else,
+            because nothing else has the evidence to change. Leaving it unsaid is a real answer and the page
+            says which numbers it used either way.
+          </p>
+          <Tiles
+            label="Ancestry"
+            columns={2}
+            compact
+            value={ancestry}
+            onChange={onAncestry}
+            options={ANCESTRIES}
           />
-        </div>
+        </Disclosure>
 
-        <div style={{ marginTop: "0.85rem", display: "grid", gap: "0.85rem" }}>
-          {traits.map((tr) => (
-            <div key={tr.trait} className="card" style={{ padding: "1rem 1.1rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", alignItems: "baseline" }}>
-                <span style={{ fontWeight: 600 }}>{tr.label}</span>
-                <span className="tnum" style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-                  {tr.band === "lower" ? "Lower" : tr.band === "higher" ? "Higher" : "Middle"}
-                </span>
-              </div>
-              <div
-                aria-hidden="true"
-                style={{ marginTop: 8, height: 4, borderRadius: 999, background: "var(--rule)", overflow: "hidden" }}
-              >
-                <div
-                  style={{
-                    width: `${((tr.score - 1) / 6) * 100}%`,
-                    height: "100%",
-                    background: tr.trait === "conscientiousness" ? "var(--accent)" : "var(--muted)",
-                  }}
-                />
-              </div>
-              <p style={{ margin: "0.7rem 0 0", color: "var(--muted)", lineHeight: 1.6 }}>{tr.reading}</p>
-            </div>
-          ))}
-        </div>
+        <Disclosure title="How these numbers were worked out" hint="Sources, error bars and the weak parts">
+          <p className="why-body">
+            Every number here is placed against <strong>71,543 real people</strong>, measured by the US
+            national health survey. A tape is out by two to five centimetres in ordinary use, so the lit band
+            on each gauge is the honest range rather than a single confident number.
+          </p>
+          <p className="why-body">
+            Percentiles from {PERCENTILE_SOURCE.label}. {PERCENTILE_SOURCE.detail}
+          </p>
+          <p className="why-body">
+            Shoulder width and muscle mass were never measured. You were not asked to guess at either, because
+            a guess is not a measurement, so the figure draws both from a conservative default and no number
+            on this page rests on them.
+          </p>
+          <p className="why-body">
+            The exercises are not ranked by muscle activation studies. Activation is not growth. They are
+            ranked on whether you can keep making them harder, whether they load the muscle in a stretched
+            position, whether they are safe on your own, and whether you can get at the equipment.
+          </p>
+          <p className="why-body">
+            Two things decide most of whether a year of training changes anything: how hard your sets are, and
+            how often you train. Sets that stop five or more reps short of failure produce very little growth,
+            and roughly ten hard sets per muscle per week is where growth becomes reliable. You were not asked
+            to predict either, because a warning built on a prediction is a warning about nobody.
+          </p>
+        </Disclosure>
+
+        <Disclosure title="What this is not" hint="The limits, stated plainly">
+          <p className="why-body">
+            This is an assessment, not a programme. It does not tell you what to lift on Tuesday, and it is
+            not a diagnosis. Every number here is an estimate built from population data, and population data
+            describes any single person badly. If something feels wrong in your body, a doctor beats a
+            website.
+          </p>
+          <p className="why-body">
+            Nothing on this page was sent anywhere. It was worked out on your own device and it disappears
+            when you close the tab.
+          </p>
         </Disclosure>
       </section>
 
-      <section style={{ marginTop: "3rem" }}>
-        <h2 className="h2">What this is not</h2>
-        <p style={{ color: "var(--muted)", marginTop: "0.5rem", lineHeight: 1.65 }}>
-          This is an assessment, not a programme. It does not tell you what to lift on Tuesday, and it is not a
-          diagnosis. Every number here is an estimate built from population data, and population data describes
-          any single person badly. If something feels wrong in your body, a doctor beats a website.
-        </p>
-      </section>
-
-      <div style={{ display: "flex", gap: "0.7rem", marginTop: "2.5rem", flexWrap: "wrap" }}>
-        <button className="btn btn-quiet" onClick={onRestart}>
+      <div className="read-actions">
+        <button type="button" className="btn btn-quiet tap" onClick={onRestart}>
           Start again
         </button>
-        <button className="btn btn-quiet" onClick={() => window.print()}>
-          Print or save as PDF
+        <button type="button" className="btn btn-quiet tap" onClick={printAll}>
+          Print or save
         </button>
       </div>
     </div>

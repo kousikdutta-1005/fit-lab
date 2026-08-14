@@ -29,7 +29,7 @@ Two questions to answer before writing the code:
 | Need | Decision | Why |
 |---|---|---|
 | Exercise database | `yuhonas/free-exercise-db` | Unlicense, true public domain, 873 exercises. No reason to write our own. |
-| Personality measure | TIPI, Gosling et al. 2003 | Published, validated, free to use. Writing our own questionnaire would be worse and unvalidated. |
+| Personality measure | TIPI, Gosling et al. 2003. **Removed from the product.** | It was the right instrument for the job, and the job turned out not to exist: ten questions whose answers moved no verdict, no threshold and no exercise. Removed rather than replaced. Recorded here because the rule is buy before build, and the harder rule is do not ask at all. |
 | Disordered eating screen | SCOFF, Morgan et al. 1999 | Standard instrument. Never invent a screening tool. |
 | Readiness screening | PAR-Q+ framework, ACSM 2015 algorithm | Established clinical screening. |
 | Body fat estimate | US Navy tape formula | Free, published, and its error is documented, which matters more than its accuracy. |
@@ -65,6 +65,18 @@ C.J..Goldman, CC-BY-4.0** (commercial use allowed, credit required), and the
 measurement-driven deformation is written here. Rendering uses the MIT
 libraries `three`, `@react-three/fiber` and `@react-three/drei`.
 
+The figure carries no skin tone, hair or facial hair. The 3D layer always
+rendered a teal scan, so the flat fallback matches it, and the appearance
+controls are gone. This is not a shortcut: a swatch palette with something
+preselected makes one skin tone the default, and rule 1 below forbids treating
+any body as the default. A scan has no tone to default to, and the shape the
+measurements make — the only thing the product claims to show — is unaffected.
+
+Shoulder width and muscle mass are not asked for either. A person's guess at
+their own build is not a measurement, and drawing it as if it were is the
+flattery this whole component exists to avoid. Both come from a conservative
+default in `src/lib/figure.ts`, and the result page says so.
+
 A first attempt generated the whole body procedurally and it read as a
 mannequin, which is worth recording: parametric primitives do not make a body.
 
@@ -91,6 +103,26 @@ labelled as inferred; the head is never touched, the feet never leave the floor,
 and every displacement field saturates at the edge of the part it belongs to, so
 a blend can crease at worst and never tear. Past what the mesh can be drawn as,
 the figure clamps and says so in one line.
+
+## What the product may ask for
+
+A question earns its place by changing an output. That is the whole test, and
+it is enforced in `app/src/lib/flow.ts` rather than in a component, so it can be
+tested: which measurements are required for which sex, when a safety group
+counts as answered, and which goal fields exist for which goal.
+
+Two rules fall out of it.
+
+- **Conditional, not uniform.** A target weight and a timeline are the two
+  halves of a rate, so they appear for fat loss and muscle gain and nowhere
+  else. Training age changes the gain-rate model only, so it appears for muscle
+  gain only. Asking `stay-healthy` for a goal weight collects a number to throw
+  away.
+- **Never a silent default.** An untouched safety group is not a group of no
+  answers; it is an unanswered group, and the flow will not move until the
+  person has ticked something or said plainly that none of it applies.
+  Similarly, a warning must never be generated from a value nobody supplied,
+  which is why `planFlags` guards every branch on the field being present.
 
 ## The rules the product cannot break
 

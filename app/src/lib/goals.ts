@@ -13,24 +13,33 @@
  * white North American cohorts. There is essentially no South Asian data.
  */
 
-import type { Profile, Sex } from "./calc"
-import { bmi, ffmi, ffmiCeiling, leanMassKg, round } from "./calc"
+import type { Profile, Sex } from "./calc.ts"
+import { bmi, ffmi, ffmiCeiling, leanMassKg, round } from "./calc.ts"
 
 export type GoalKind = "lose-fat" | "build-muscle" | "get-stronger" | "stay-healthy"
 
 export type TrainingAge = "none" | "under-1" | "1-3" | "3-plus"
 
+/**
+ * Everything past the goal itself is optional, and absent means absent.
+ *
+ * The onboarding only asks for a field where that field changes an output for
+ * the goal chosen, so a plan flag must never be raised from a value nobody
+ * gave. A warning invented out of a default is worse than no warning: it is a
+ * claim about a person made up by the form.
+ */
 export type Intent = {
   kind: GoalKind
-  /** Target bodyweight in kg. Not used for stay-healthy. */
+  /** Target bodyweight in kg. Only asked for lose-fat and build-muscle. */
   targetWeightKg?: number
-  /** How many weeks they want it in. */
-  weeks: number
-  trainingAge: TrainingAge
-  /** Days per week they intend to train. */
-  daysPerWeek: number
-  /** How hard the sets will be. This is where aiming too low shows up. */
-  effort: "comfortable" | "challenging" | "near-failure"
+  /** How many weeks they want it in. Only asked alongside a target. */
+  weeks?: number
+  /** Only asked for build-muscle, where it changes the gain rate. */
+  trainingAge?: TrainingAge
+  /** Not asked in onboarding. Present only if something else supplies it. */
+  daysPerWeek?: number
+  /** Not asked in onboarding. Present only if something else supplies it. */
+  effort?: "comfortable" | "challenging" | "near-failure"
 }
 
 export type Verdict =
@@ -108,8 +117,33 @@ export function assess(profile: Profile, intent: Intent, bodyFatPct: number): As
   const delta = target - profile.weightKg
   const weeks = intent.weeks
 
+  // Both remaining goals are a rate, and a rate needs a denominator. The flow
+  // asks for one whenever it asks for a target, so this is a guard rather than
+  // a path: what it must not do is invent a timeline and then judge the person
+  // against it.
+  if (weeks === undefined) {
+    return {
+      verdict: "realistic",
+      headline: "No timeline given, so there is no pace to judge.",
+      detail:
+        "A target weight on its own cannot be called fast or slow. What can be said is that the direction is achievable for almost everybody; how long it takes is the part that needs a date against it.",
+      flags,
+    }
+  }
+
   if (intent.kind === "lose-fat") return assessFatLoss(profile, target, delta, weeks, bodyFatPct, flags)
-  return assessMuscleGain(profile, intent, target, delta, weeks, bodyFatPct, flags)
+
+  const trainingAge = intent.trainingAge
+  if (trainingAge === undefined) {
+    return {
+      verdict: "realistic",
+      headline: "How fast muscle arrives depends on how long you have trained.",
+      detail:
+        "That was not given, and the rate model is worthless without it. A beginner and someone three years in are told very different things about the same target, so the honest answer here is that this one cannot be paced.",
+      flags,
+    }
+  }
+  return assessMuscleGain(profile, trainingAge, target, delta, weeks, bodyFatPct, flags)
 }
 
 function assessFatLoss(
@@ -187,7 +221,7 @@ function assessFatLoss(
 
 function assessMuscleGain(
   profile: Profile,
-  intent: Intent,
+  trainingAge: TrainingAge,
   target: number,
   delta: number,
   weeks: number,
@@ -220,7 +254,7 @@ function assessMuscleGain(
   }
 
   const leanNeeded = delta * 0.6
-  const perWeek = gainPerWeek(profile.weightKg, intent.trainingAge, profile.sex)
+  const perWeek = gainPerWeek(profile.weightKg, trainingAge, profile.sex)
   const honestWeeks = Math.ceil(leanNeeded / perWeek)
   const perMonth = round(perWeek * 4.345, 2)
 
@@ -265,8 +299,10 @@ function assessMuscleGain(
 /**
  * Problems with the plan rather than with the goal.
  *
- * This is where "aiming too low" is usually hiding: not in the target, but in
- * an intention to train twice a week with weights that never feel hard.
+ * Every branch here is guarded on the field being present. The onboarding no
+ * longer asks how hard the sets will be or how many days a week a person will
+ * train, so those warnings simply do not appear rather than appearing off the
+ * back of a default nobody chose.
  */
 export function planFlags(intent: Intent): Flag[] {
   const flags: Flag[] = []
@@ -279,7 +315,7 @@ export function planFlags(intent: Intent): Flag[] {
     })
   }
 
-  if (intent.daysPerWeek <= 2 && intent.kind !== "stay-healthy") {
+  if (intent.daysPerWeek !== undefined && intent.daysPerWeek <= 2 && intent.kind !== "stay-healthy") {
     flags.push({
       severity: "warn",
       title: `${intent.daysPerWeek} ${intent.daysPerWeek === 1 ? "day" : "days"} a week is below the useful threshold`,
@@ -287,7 +323,7 @@ export function planFlags(intent: Intent): Flag[] {
     })
   }
 
-  if (intent.daysPerWeek >= 6 && intent.trainingAge === "none") {
+  if (intent.daysPerWeek !== undefined && intent.daysPerWeek >= 6 && intent.trainingAge === "none") {
     flags.push({
       severity: "note",
       title: "Six days a week is more than a beginner needs",
@@ -295,7 +331,7 @@ export function planFlags(intent: Intent): Flag[] {
     })
   }
 
-  if (intent.weeks < 8 && intent.kind !== "stay-healthy") {
+  if (intent.weeks !== undefined && intent.weeks < 8 && intent.kind !== "stay-healthy") {
     flags.push({
       severity: "note",
       title: "Under eight weeks is shorter than visible change takes",
