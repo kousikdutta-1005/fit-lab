@@ -128,6 +128,15 @@ const NECK_REFERENCE: Record<Sex, number> = { male: 37 / 175, female: 32 / 162 }
 const SHOULDER_REFERENCE: Record<Sex, number> = { male: 1.42, female: 1.28 }
 
 /**
+ * The slice tables overstate the signed triangle volume of the female mesh
+ * across both ordinary and stressed readings. These factors are calibrated
+ * against the committed GLBs by the independent volume regressions; applying
+ * them here avoids loading and deforming a mesh merely to decide whether the
+ * scale has outrun what was drawn.
+ */
+const RENDERED_VOLUME_FACTOR: Record<Sex, number> = { male: 1, female: 0.92 }
+
+/**
  * Waist-to-hip, used only when the hip was not measured, which is every male
  * reading because the app does not ask men for a hip. WHO's cut-offs for
  * abdominal obesity are 0.90 for men and 0.85 for women, and leaner bodies sit
@@ -368,7 +377,8 @@ export function bodyParams(input: BodyInput, profile: BodyProfile): BodyParams {
   ) {
     notes.push("shoulders")
   }
-  const volumeGap = targetLitres > 0 ? Math.abs(volumeLitres - targetLitres) / targetLitres : 0
+  const renderedVolumeEstimate = volumeLitres * RENDERED_VOLUME_FACTOR[sex]
+  const volumeGap = targetLitres > 0 ? Math.abs(renderedVolumeEstimate - targetLitres) / targetLitres : 0
   if (
     (Math.abs(response - requestedResponse) > 1e-6 && volumeGap > 0.02) ||
     volumeGap > 0.12

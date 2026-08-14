@@ -367,6 +367,31 @@ describe("parameters from ordinary readings", () => {
       `the supported heavy target drifted too far: ${rendered[2]}L vs ${heavy.read.targetLitres}L`,
     )
   })
+
+  it("reports female saturation hidden by the slice-volume estimate", () => {
+    const cases = [
+      withFat({ ...FEMALE, heightCm: 170, weightKg: 80, waistCm: 70, neckCm: 32, hipCm: 95 }),
+      withFat({ ...FEMALE, weightKg: 120, waistCm: 122, hipCm: 140, muscle: 0.5 }),
+    ]
+    for (const input of cases) {
+      const p = paramsFor(input)
+      const modeledGap = Math.abs(p.read.volumeLitres - p.read.targetLitres) / p.read.targetLitres
+      const rendered = renderedVolumeLitres(input)
+      const renderedGap = Math.abs(rendered - p.read.targetLitres) / p.read.targetLitres
+      assert.ok(modeledGap < 0.12, `case was not hidden by slice volume: ${(modeledGap * 100).toFixed(1)}%`)
+      assert.ok(renderedGap > 0.16, `rendered gap was not significant: ${(renderedGap * 100).toFixed(1)}%`)
+      assert.ok(p.notes.includes("weight"), `missing weight note at ${rendered.toFixed(1)}L rendered`)
+    }
+  })
+
+  it("does not invent corrected-volume notes for ordinary bodies", () => {
+    for (const input of [male, female]) {
+      const p = paramsFor(input)
+      const renderedGap = Math.abs(renderedVolumeLitres(input) - p.read.targetLitres) / p.read.targetLitres
+      assert.ok(renderedGap < 0.08, `${input.sex} ordinary rendered gap was ${(renderedGap * 100).toFixed(1)}%`)
+      assert.ok(!p.notes.includes("weight"), `${input.sex} ordinary reading got a false weight note`)
+    }
+  })
 })
 
 describe("the flat fallback", () => {
