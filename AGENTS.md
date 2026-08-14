@@ -68,11 +68,29 @@ libraries `three`, `@react-three/fiber` and `@react-three/drei`.
 A first attempt generated the whole body procedurally and it read as a
 mannequin, which is worth recording: parametric primitives do not make a body.
 
-How the deformation stays honest: `scripts/build-body.mjs` normalises the mesh
-to stature fractions and measures its own half-width at 64 height slices. At
-runtime every horizontal slice is scaled by the ratio of the user's real girth
-to the mesh's girth at that height. Nobody can be rendered narrower than their
-tape says. Chest is inferred rather than measured, and the interface says so.
+A second attempt scaled every horizontal slice of the mesh by one factor, which
+is also worth recording, because it is a subtler version of the same mistake. A
+slice does not know an arm from a rib, so the waist tape thickened the forearms
+and dragged the hands outwards, the shoulders stretched the fingertips, and
+weight and height did not reach the figure at all. It rendered without an error
+the whole time.
+
+How the deformation stays honest now. `scripts/body-profile.mjs` measures each
+committed mesh region by region: it tracks each arm from the hand to the armpit
+by continuity, finds the crotch, the hip, the shoulder, the neck and the base of
+the skull from the geometry itself, and records each cross-section's convex-hull
+perimeter, which is what a tape reads, since a tape bridges the small of a back.
+At runtime `src/lib/body-model.ts` turns the readings into bounded parameters
+and `src/lib/body-deform.ts` moves the vertices, each part about its own centre,
+blended into its neighbours. Both are free of three.js and both are tested
+against the real meshes with `npm test`.
+
+The rules inside it: where there is a tape reading the tape wins and weight
+never overrules it; where there is none the number is inferred, bounded and
+labelled as inferred; the head is never touched, the feet never leave the floor,
+and every displacement field saturates at the edge of the part it belongs to, so
+a blend can crease at worst and never tear. Past what the mesh can be drawn as,
+the figure clamps and says so in one line.
 
 ## The rules the product cannot break
 

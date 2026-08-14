@@ -181,13 +181,23 @@ export default function App() {
   }
 
   const index = FLOW.indexOf(stage)
-  const figure = (
-    <BodyView
-      build={{ sex, heightCm, waistCm, hipCm: sex === "female" ? hipCm : 0, shoulderRatio, muscle, bodyFat }}
-      look={look}
-      height={340}
-    />
+  // Memoised because its identity is what decides whether the mesh is deformed
+  // again: without this, changing a hair colour would re-scale 13,000 vertices.
+  const build = useMemo(
+    () => ({
+      sex,
+      heightCm,
+      weightKg,
+      waistCm,
+      neckCm,
+      hipCm: sex === "female" ? hipCm : 0,
+      shoulderRatio,
+      muscle,
+      bodyFat,
+    }),
+    [sex, heightCm, weightKg, waistCm, neckCm, hipCm, shoulderRatio, muscle, bodyFat],
   )
+  const figure = <BodyView build={build} look={look} height={340} />
 
   return (
     <div className="wrap" style={{ paddingTop: "2.5rem", paddingBottom: "4rem" }}>
@@ -207,14 +217,15 @@ export default function App() {
                 position: "absolute",
                 bottom: 10,
                 left: 14,
+                right: 14,
                 margin: 0,
                 fontSize: "0.62rem",
-                letterSpacing: "0.16em",
+                letterSpacing: "0.1em",
                 textTransform: "uppercase",
                 color: "var(--faint)",
               }}
             >
-              Live from your measurements
+              {`Live · ${heightCm}cm · ${weightKg}kg · BMI ${(weightKg / (heightCm / 100) ** 2).toFixed(1)} · waist ${waistCm} · neck ${neckCm}${sex === "female" ? ` · hip ${hipCm}` : ""}`}
             </p>
           </div>
 
@@ -698,7 +709,9 @@ function Intro({ onStart }: { onStart: () => void }) {
   const demo = {
     sex: "male" as const,
     heightCm: 175,
+    weightKg: 78,
     waistCm: 88,
+    neckCm: 38,
     hipCm: 0,
     shoulderRatio: 1.46,
     muscle: 0.5,

@@ -130,7 +130,9 @@ export function Result({
           build={{
             sex: profile.sex,
             heightCm: profile.heightCm,
+            weightKg: profile.weightKg,
             waistCm: profile.waistCm,
+            neckCm: profile.neckCm,
             hipCm: profile.sex === "female" ? profile.hipCm : 0,
             shoulderRatio,
             muscle,

@@ -1,4 +1,4 @@
-import { Component, Suspense, lazy, useEffect, useRef, useState } from "react"
+import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState } from "react"
 import type { ErrorInfo, ReactNode } from "react"
 import type { Build } from "./Character"
 import { Character } from "./Character"
@@ -66,6 +66,8 @@ export function BodyView({
   const ref = useRef<HTMLElement>(null)
   const [show, setShow] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [limit, setLimit] = useState<string | null>(null)
+  const onLimit = useCallback((note: string | null) => setLimit(note), [])
 
   useEffect(() => {
     if (!capable() || !ref.current) return
@@ -106,11 +108,34 @@ export function BodyView({
       {show && !failed ? (
         <Body3DErrorBoundary fallback={fallback}>
           <Suspense fallback={fallback}>
-            <Character3D build={build} height={height} onUnavailable={() => setFailed(true)} />
+            <Character3D
+              build={build}
+              height={height}
+              onUnavailable={() => setFailed(true)}
+              onLimit={onLimit}
+            />
           </Suspense>
         </Body3DErrorBoundary>
       ) : (
         fallback
+      )}
+      {show && !failed && limit && (
+        <p
+          className="mono"
+          style={{
+            position: "absolute",
+            left: 14,
+            right: 14,
+            top: 24,
+            zIndex: 2,
+            margin: 0,
+            fontSize: "0.6rem",
+            lineHeight: 1.5,
+            color: "var(--muted)",
+          }}
+        >
+          {limit}
+        </p>
       )}
       <figcaption
         className="mono"

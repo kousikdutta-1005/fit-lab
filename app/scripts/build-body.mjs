@@ -10,8 +10,9 @@
  * the deformation is driven entirely by numbers the user entered.
  *
  * This script normalises the mesh so the runtime can reason in stature
- * fractions, and measures the mesh's own width profile so the runtime knows
- * what it is deforming FROM.
+ * fractions, then hands it to body-profile.mjs, which measures the mesh's own
+ * regions, landmarks and girths so the runtime knows what it is deforming FROM
+ * and which vertices are an arm rather than a rib.
  *
  * Usage: node scripts/build-body.mjs <scene.gltf|scene.glb> [--name female]
  */
@@ -21,8 +22,7 @@ import { ALL_EXTENSIONS } from "@gltf-transform/extensions"
 import { dedup, prune, weld } from "@gltf-transform/functions"
 import { mkdirSync, statSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
-
-const SLICES = 64
+import { buildProfile, pointsOf } from "./body-profile.mjs"
 
 async function main() {
   const args = process.argv.slice(2)
@@ -106,33 +106,11 @@ async function main() {
     node.setScale([1, 1, 1])
   }
 
-  // Pass three: measure the mesh's own half-width and half-depth at each height,
-  // which is what the runtime deformation scales relative to.
-  const halfWidth = new Array(SLICES).fill(0)
-  const halfDepth = new Array(SLICES).fill(0)
-  const v = []
-  for (const p of prims) {
-    const pos = p.getAttribute("POSITION")
-    for (let i = 0; i < pos.getCount(); i++) {
-      pos.getElement(i, v)
-      const slice = Math.min(SLICES - 1, Math.max(0, Math.floor(v[1] * SLICES)))
-      halfWidth[slice] = Math.max(halfWidth[slice], Math.abs(v[0]))
-      halfDepth[slice] = Math.max(halfDepth[slice], Math.abs(v[2]))
-    }
-  }
-
-  // Torso slices only: arms sit at the same height as the chest and would
-  // otherwise be mistaken for a very wide ribcage.
-  const torsoHalfWidth = new Array(SLICES).fill(0)
-  for (const p of prims) {
-    const pos = p.getAttribute("POSITION")
-    for (let i = 0; i < pos.getCount(); i++) {
-      pos.getElement(i, v)
-      if (Math.abs(v[0]) > 0.14) continue
-      const slice = Math.min(SLICES - 1, Math.max(0, Math.floor(v[1] * SLICES)))
-      torsoHalfWidth[slice] = Math.max(torsoHalfWidth[slice], Math.abs(v[0]))
-    }
-  }
+  // Pass three: measure what the runtime is going to deform. Segmentation,
+  // landmarks, girths and areas all come from body-profile.mjs, which is the
+  // same code validate-body-assets.mjs re-runs to catch a profile that has
+  // drifted from the mesh it claims to describe.
+  const profile = buildProfile(pointsOf(doc))
 
   const suffix = name === "male" ? "" : `-${name}`
   const out = resolve(`public/body/base${suffix}.glb`)
@@ -140,19 +118,13 @@ async function main() {
   mkdirSync(dirname(out), { recursive: true })
   writeFileSync(out, await io.writeBinary(doc))
 
-  const profile = {
-    slices: SLICES,
-    note: "Half-width and half-depth of the base mesh at each height slice, in stature fractions. Feet at 0, crown at 1.",
-    halfWidth: halfWidth.map((n) => +n.toFixed(4)),
-    halfDepth: halfDepth.map((n) => +n.toFixed(4)),
-    torsoHalfWidth: torsoHalfWidth.map((n) => +n.toFixed(4)),
-  }
   writeFileSync(profileOut, JSON.stringify(profile, null, 1))
 
   let verts = 0
   for (const p of prims) verts += p.getAttribute("POSITION").getCount()
 
   console.log(`vertices: ${verts}`)
+  console.log(`landmarks: ${JSON.stringify(profile.landmarks)}`)
   console.log(`written: ${out} ${(statSync(out).size / 1024).toFixed(0)} KB`)
   console.log(`profile: ${profileOut}`)
 }

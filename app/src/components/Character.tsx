@@ -22,10 +22,13 @@ export const HAIRS = ["#0f0d0c", "#2b1b12", "#4a3728", "#7a5c3e", "#a9a9a9", "#8
 export type Build = {
   sex: "male" | "female"
   heightCm: number
+  weightKg: number
   /** Hip circumference in cm. 0 when not measured. */
   hipCm: number
   /** Waist circumference in cm. */
   waistCm: number
+  /** Neck circumference in cm. */
+  neckCm: number
   /** Shoulder breadth as a multiple of waist. Higher reads as broader. */
   shoulderRatio: number
   /** 0-1, drives limb and torso thickness. */
@@ -39,6 +42,12 @@ export type Build = {
  * recognisable enough that a person can compare it to a photo of themselves
  * and say "narrower than that" — which is the only kind of calibration this
  * product can honestly claim.
+ *
+ * It is also the fallback, so it has to answer the same measurements the 3D
+ * figure does. It cannot answer them as well: it has no mesh to measure and no
+ * cross-sections to scale, so it maps each reading onto a drawing unit and says
+ * as much. What it must never do is ignore one, because then a person on a
+ * cheap phone would be told their weight does not show.
  */
 export function Character({
   build,
@@ -49,28 +58,44 @@ export function Character({
   look: Look
   height?: number
 }) {
-  const { sex, waistCm, shoulderRatio, muscle, bodyFat } = build
+  const { sex, heightCm, weightKg, waistCm, neckCm, shoulderRatio, muscle, bodyFat } = build
 
-  // Map a real waist onto drawing units. 60cm reads narrow, 120cm reads wide.
-  const waistUnits = 13 + ((waistCm - 60) / 60) * 20
+  // Map a real waist onto drawing units. 60cm reads narrow, 120cm reads wide,
+  // and both are read against the person's own height, so the same tape on a
+  // shorter frame draws wider.
+  const scale = 170 / Math.max(heightCm, 120)
+  const waistUnits = 13 + ((waistCm * scale - 60) / 60) * 20
   const waist = Math.max(9, Math.min(36, waistUnits))
   const shoulder = waist * shoulderRatio
   const hip = sex === "female" ? waist * 1.16 : waist * 1.02
-  const limb = 3.2 + muscle * 2.6 + Math.max(0, (bodyFat - 15) / 100) * 5
+
+  // What the scale says that the tape did not, in the same spirit as the 3D
+  // model: the mass a waist does not account for goes to the limbs.
+  const bmi = weightKg / (heightCm / 100) ** 2
+  const expected = 10 + waistCm * scale * 0.16
+  const spare = Math.max(-0.25, Math.min(0.45, (bmi - expected) / 22))
+  const limb = (3.2 + muscle * 2.6 + Math.max(0, (bodyFat - 15) / 100) * 5) * (1 + spare * 0.5)
   const soft = Math.max(0, Math.min(1, (bodyFat - 12) / 30))
   const chest = sex === "female" ? waist * 0.98 : waist * 1.04
+  const neck = Math.max(2.6, Math.min(7.5, (neckCm * scale) / 10.3))
 
+  // The figure stands on the same floor whatever its height, so that a shorter
+  // person is drawn shorter rather than drawn smaller and framed the same. The
+  // view box carries the headroom for it: at 210cm the crown lands above where
+  // the old one ended, and a clipped head is worse than no height at all.
+  const stature = Math.max(0.72, Math.min(1.26, heightCm / 170))
   const cx = 60
   const headR = 8.4
 
   return (
     <svg
-      viewBox="0 0 120 210"
+      viewBox="0 -28 120 238"
       height={height}
       role="img"
-      aria-label={`A figure with a waist of about ${Math.round(waistCm)} centimetres, ${muscle > 0.6 ? "muscular" : muscle > 0.3 ? "moderately built" : "lightly built"} limbs.`}
+      aria-label={`A figure ${Math.round(heightCm)} centimetres tall, weighing ${Math.round(weightKg)} kilograms, with a waist of about ${Math.round(waistCm)} centimetres and ${muscle > 0.6 ? "muscular" : muscle > 0.3 ? "moderately built" : "lightly built"} limbs.`}
       style={{ display: "block", margin: "0 auto", maxWidth: "100%" }}
     >
+      <g transform={`translate(${cx} 196) scale(${stature.toFixed(3)}) translate(${-cx} -196)`}>
       {/* legs */}
       <path
         d={`M${cx - hip * 0.55} 120 C ${cx - hip * 0.5} 150, ${cx - limb * 1.5} 165, ${cx - limb * 1.35} 196`}
@@ -118,7 +143,7 @@ export function Character({
       />
 
       {/* neck + head */}
-      <rect x={cx - 3.6} y={44} width={7.2} height={12} rx={3.4} fill={look.skin} />
+      <rect x={cx - neck} y={44} width={neck * 2} height={12} rx={neck * 0.9} fill={look.skin} />
       <circle cx={cx} cy={34} r={headR} fill={look.skin} />
 
       {/* hair */}
@@ -148,6 +173,7 @@ export function Character({
           opacity={look.facial === "stubble" ? 0.45 : 0.92}
         />
       )}
+      </g>
     </svg>
   )
 }

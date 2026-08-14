@@ -3,6 +3,9 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber"
 import { useGLTF } from "@react-three/drei"
 import * as THREE from "three"
 import type { Build } from "./Character"
+import { bodyParams, clampNote } from "../lib/body-model"
+import { buildDeformation } from "../lib/body-deform"
+import type { BodyProfile } from "../lib/body-profile"
 import femaleProfile from "../data/body-profile-female.json"
 import maleProfile from "../data/body-profile.json"
 
@@ -14,108 +17,65 @@ import maleProfile from "../data/body-profile.json"
  * paid and licensed for non-commercial research only. So the lawful male and
  * female base meshes are selected here, and the deformation is written here.
  *
- * The honesty is structural rather than promised. The mesh's own width at every
- * height is measured at build time; at runtime each horizontal slice is scaled
- * by the ratio between the user's real girth and the mesh's girth at that
- * height. Nobody can be rendered narrower than their tape says they are.
+ * The arithmetic all lives in lib/body-model.ts and lib/body-deform.ts, which
+ * know nothing about three.js and are tested against the real meshes. This file
+ * does three things and no more: load the right mesh for the sex, hand the
+ * pristine vertices to the deformation, and stand the result on the floor at
+ * the person's own height.
  */
-
-type BodyProfile = typeof maleProfile
 
 const MODELS: Record<Build["sex"], string> = {
   male: `${import.meta.env.BASE_URL}body/base.glb`,
   female: `${import.meta.env.BASE_URL}body/base-female.glb`,
 }
 const PROFILES: Record<Build["sex"], BodyProfile> = {
-  male: maleProfile,
-  female: femaleProfile,
+  male: maleProfile as BodyProfile,
+  female: femaleProfile as BodyProfile,
 }
-const FIGURE = 2.5
-const DEPTH = 0.72
 
-/** Landmarks as a fraction of stature. */
-const L = { hip: 0.485, waist: 0.6, chest: 0.72, shoulder: 0.82 }
-
+/** How tall the figure stands when the person is 170cm. */
+const REFERENCE_FIGURE = 2.5
 /**
- * A circumference in cm becomes a half-width as a fraction of stature. The
- * cross-section is treated as an ellipse rather than a circle: sweeping a
- * circle makes waist, chest and hip come out nearly equal and a body read as a
- * tube.
+ * The floor. Fixed, so that a taller figure is visibly a taller figure rather
+ * than the same figure drawn larger. The camera below is framed to hold the
+ * tallest body this model supports, 210cm, with the crown still inside the
+ * picture and the plinth still under the feet.
  */
-function halfWidthOf(cm: number, heightCm: number): number {
-  return cm / (Math.PI * (1 + DEPTH) * 1.02) / heightCm
-}
+const FLOOR = -1.62
 
-function baseAt(table: number[], frac: number, slices: number): number {
-  const i = Math.min(slices - 1, Math.max(0, Math.round(frac * slices)))
-  return table[i] || 0.0001
-}
-
-/**
- * The scale-per-height curve. Anchored at the measured landmarks and relaxed
- * back to the base mesh at the crown and the floor, so a wide waist does not
- * also produce a wide skull.
- */
-function scaleCurve(build: Build, profile: BodyProfile): Float32Array {
-  const { waistCm, hipCm, heightCm, sex, shoulderRatio, muscle, bodyFat } = build
-  const slices = profile.slices
-  const torso = profile.torsoHalfWidth
-
-  const waistTarget = halfWidthOf(waistCm, heightCm)
-  const hipTarget =
-    hipCm > 0 ? halfWidthOf(hipCm, heightCm) : waistTarget * (sex === "female" ? 1.14 : 1.02)
-
-  // Chest is not measured, so it is inferred from the waist and from how much
-  // muscle the person reports. Inferred, and labelled as such in the interface.
-  const chestTarget = waistTarget * (sex === "female" ? 1.08 : 1.14) + muscle * 0.012
-  const shoulderTarget = chestTarget * (shoulderRatio / (sex === "male" ? 1.42 : 1.28))
-
-  const anchors: [number, number][] = [
-    [0.0, 1],
-    [0.2, 1 + (muscle - 0.35) * 0.12 + Math.max(0, (bodyFat - 18) / 100) * 0.35],
-    [L.hip, hipTarget / baseAt(torso, L.hip, slices)],
-    [L.waist, waistTarget / baseAt(torso, L.waist, slices)],
-    [L.chest, chestTarget / baseAt(torso, L.chest, slices)],
-    [L.shoulder, shoulderTarget / baseAt(torso, L.shoulder, slices)],
-    [0.9, 1],
-    [1.0, 1],
-  ]
-
-  const curve = new Float32Array(slices + 1)
-  for (let i = 0; i <= slices; i++) {
-    const y = i / slices
-    let a = anchors[0]
-    let b = anchors[anchors.length - 1]
-    for (let k = 0; k < anchors.length - 1; k++) {
-      if (y >= anchors[k][0] && y <= anchors[k + 1][0]) {
-        a = anchors[k]
-        b = anchors[k + 1]
-        break
-      }
-    }
-    const span = b[0] - a[0]
-    const t = span <= 0 ? 0 : (y - a[0]) / span
-    const smooth = t * t * (3 - 2 * t)
-    curve[i] = THREE.MathUtils.clamp(a[1] + (b[1] - a[1]) * smooth, 0.55, 2.2)
-  }
-  return curve
-}
-
-function sampleCurve(curve: Float32Array, y: number, slices: number): number {
-  const f = THREE.MathUtils.clamp(y, 0, 1) * slices
-  const i = Math.floor(f)
-  const t = f - i
-  const a = curve[Math.min(slices, i)]
-  const b = curve[Math.min(slices, i + 1)]
-  return a + (b - a) * t
-}
-
-function Body({ build, reduced }: { build: Build; reduced: boolean }) {
+function Body({
+  build,
+  reduced,
+  onLimit,
+}: {
+  build: Build
+  reduced: boolean
+  onLimit: (note: string | null) => void
+}) {
   const model = MODELS[build.sex]
   const profile = PROFILES[build.sex]
   const facing = build.sex === "male" ? Math.PI : 0
   const { scene } = useGLTF(model)
   const spin = useRef<THREE.Group>(null)
+
+  const params = useMemo(
+    () =>
+      bodyParams(
+        {
+          sex: build.sex,
+          heightCm: build.heightCm,
+          weightKg: build.weightKg,
+          waistCm: build.waistCm,
+          neckCm: build.neckCm,
+          hipCm: build.hipCm,
+          shoulderRatio: build.shoulderRatio,
+          muscle: build.muscle,
+          bodyFatPct: build.bodyFat,
+        },
+        profile,
+      ),
+    [build, profile],
+  )
 
   const material = useMemo(
     () =>
@@ -173,30 +133,17 @@ function Body({ build, reduced }: { build: Build; reduced: boolean }) {
   }, [scene, material])
 
   useEffect(() => {
-    const curve = scaleCurve(build, profile)
-    const limb = 1 + (build.muscle - 0.35) * 0.22 + Math.max(0, (build.bodyFat - 18) / 100) * 0.5
-
+    // Always from the pristine copy, never from the last shape drawn, so that
+    // dragging a slider cannot compound and switching sex cannot leave a trace.
+    const deformation = buildDeformation(profile, params)
     for (const { geom, base } of targets) {
       const pos = geom.getAttribute("position") as THREE.BufferAttribute
-      const arr = pos.array as Float32Array
-      for (let i = 0; i < base.length; i += 3) {
-        const x = base[i]
-        const y = base[i + 1]
-        const z = base[i + 2]
-        const s = sampleCurve(curve, y, profile.slices)
-        // Past the edge of the torso a vertex belongs to an arm or a leg, where
-        // girth answers to muscle and fat rather than to the waist tape.
-        const outer = Math.min(1, Math.max(0, (Math.abs(x) - 0.075) / 0.06))
-        const f = s * (1 - outer) + limb * outer
-        arr[i] = x * f
-        arr[i + 1] = y
-        arr[i + 2] = z * f
-      }
+      deformation.apply(base, pos.array as Float32Array)
       pos.needsUpdate = true
       geom.computeVertexNormals()
       geom.computeBoundingSphere()
     }
-  }, [build, profile, targets])
+  }, [params, profile, targets])
 
   useEffect(
     () => () => {
@@ -208,6 +155,11 @@ function Body({ build, reduced }: { build: Build; reduced: boolean }) {
 
   useEffect(() => () => material.dispose(), [material])
 
+  // If a set of measurements is past what the mesh can be drawn as, the figure
+  // is clamped and the reader is told. Silently drawing a monster instead would
+  // be worse than either.
+  useEffect(() => onLimit(clampNote(params)), [params, onLimit])
+
   useFrame((state) => {
     if (!spin.current || reduced) return
     spin.current.rotation.y = facing + Math.sin(state.clock.elapsedTime * 0.2) * 0.6
@@ -215,19 +167,19 @@ function Body({ build, reduced }: { build: Build; reduced: boolean }) {
 
   return (
     <group ref={spin} rotation={[0, facing, 0]}>
-      <group position={[0, -FIGURE / 2, 0]} scale={FIGURE}>
+      <group position={[0, FLOOR, 0]} scale={REFERENCE_FIGURE * params.stature}>
         <primitive object={root} />
       </group>
     </group>
   )
 }
 
-function ScanRing() {
+function ScanRing({ figure }: { figure: number }) {
   const ref = useRef<THREE.Mesh>(null)
   useFrame((state) => {
     if (!ref.current) return
     const p = (state.clock.elapsedTime * 0.24) % 1
-    ref.current.position.y = -FIGURE / 2 + p * FIGURE
+    ref.current.position.y = FLOOR + p * figure
     const m = ref.current.material as THREE.MeshBasicMaterial
     m.opacity = 0.5 * Math.sin(p * Math.PI)
   })
@@ -239,9 +191,14 @@ function ScanRing() {
   )
 }
 
+/**
+ * The plinth never changes size, and that is the point of it. Without something
+ * of a fixed size on the floor, a figure drawn taller is only a figure drawn
+ * bigger, and height stops being visible at all.
+ */
 function Plinth() {
   return (
-    <group position={[0, -FIGURE / 2 + 0.004, 0]}>
+    <group position={[0, FLOOR + 0.004, 0]}>
       {[
         [0.4, 0.43, 0.55],
         [0.6, 0.615, 0.22],
@@ -275,10 +232,12 @@ export default function Character3D({
   build,
   height = 400,
   onUnavailable,
+  onLimit,
 }: {
   build: Build
   height?: number
   onUnavailable: () => void
+  onLimit: (note: string | null) => void
 }) {
   const reduced =
     typeof window !== "undefined" &&
@@ -288,7 +247,7 @@ export default function Character3D({
     <div style={{ height, width: "100%" }}>
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ position: [0, 0.02, 4.45], fov: 42 }}
+        camera={{ position: [0, -0.02, 4.55], fov: 42 }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       >
         <ContextGuard onUnavailable={onUnavailable} />
@@ -299,10 +258,10 @@ export default function Character3D({
         <pointLight position={[0, -0.8, 2.2]} intensity={5} color="#4be3d0" distance={8} />
 
         <Suspense fallback={null}>
-          <Body key={build.sex} build={build} reduced={reduced} />
+          <Body key={build.sex} build={build} reduced={reduced} onLimit={onLimit} />
         </Suspense>
         <Plinth />
-        {!reduced && <ScanRing />}
+        {!reduced && <ScanRing figure={REFERENCE_FIGURE * (build.heightCm / 170)} />}
       </Canvas>
     </div>
   )

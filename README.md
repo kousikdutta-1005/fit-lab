@@ -72,11 +72,43 @@ creation through its own servers, which this cannot do.
 So both sex-specific base meshes are free and the honest part is written here.
 Male users get the CC-BY male source; female users get a genuine CC0 MakeHuman
 female generated from the project's female macro targets, not female ratios
-stretched over male anatomy. The build step measures each mesh's own width at
-64 heights; at runtime every horizontal slice is scaled by the ratio of your
-real girth to that mesh's girth. Nobody can be rendered narrower than their tape
-says they are. Chest is inferred from waist and reported muscle rather than
-measured, and it says so.
+stretched over male anatomy.
+
+The build step measures each mesh at 64 heights, and measures it region by
+region: which vertices are torso, which are an arm, which are a leg, where each
+limb's own axis runs, and what the convex-hull perimeter of every cross-section
+is — which is what a tape reads, since a tape cannot follow a concavity. The
+male mesh comes out at a 78cm waist, a 92cm hip and a 97cm chest on a 175cm
+frame; the female at 73cm, 94cm and 86cm on 162cm. Both are real, ordinary
+readings, which is the check that the measuring is working.
+
+At runtime each part is scaled about its own centre and blended into its
+neighbours, so the tape reaches the thing it was wrapped around and nothing
+else. Waist and hip set their cross-sections outright, in width and depth
+separately, from the ellipse that has the perimeter you measured. Neck moves the
+neck and the top of the trapezius. Shoulders answer the shoulder slider, barely
+to the waist, because biacromial breadth is bone. Height changes stature against
+a plinth that never changes size, so a taller figure is visibly taller rather
+than the same figure drawn bigger. Chest is inferred from waist and reported
+muscle rather than measured, and it says so.
+
+Weight is the one input with nothing of its own to sit on, so it is spread the
+way the mass has to go: the deformed mesh's own cross-sections give a volume,
+mass and the two-compartment density estimate give another, and the difference
+— what the scale says that the tape did not — goes to the limbs and a little to
+the chest. It never argues with a measured cross-section. Two people with the
+same waist and 30kg between them differ in their arms and legs, which is where
+the difference actually is.
+
+Nobody can be rendered narrower than their tape says they are. Where a set of
+measurements is past what the mesh can be drawn as, the figure clamps and says
+so, in one line, rather than rendering a monster to satisfy a slider.
+
+`npm test` checks all of this against the real meshes: that each metric moves
+what it should and leaves alone what it should not, that the head is untouched
+at every setting, that feet stay on the floor, that no cross-section becomes a
+plank or a barrel, that neighbouring vertices are never torn apart, and that
+nothing anywhere goes to infinity.
 
 The muscle anatomy is real too, and is used to show what an exercise trains.
 
@@ -196,6 +228,7 @@ MuscleWiki and ExRx are proprietary, exercisedb.io is paid, and wger is CC BY-SA
 cd app
 npm install
 npm run dev      # http://localhost:5173
+npm test         # the body model, checked against the real meshes
 npm run build
 ```
 
@@ -207,9 +240,16 @@ node scripts/build-body.mjs <male-mesh.gltf>               # normalise male (def
 node scripts/apply-makehuman-targets.mjs <base.obj> <female.obj> <target=weight>...
 npx obj2gltf -i <female.obj> -o <female.glb> --binary
 node scripts/build-body.mjs <female.glb> --name female      # female asset + profile
-node scripts/validate-body-assets.mjs                       # validate both normalised GLBs
+node scripts/build-body-profile.mjs                         # re-measure both committed meshes
+node scripts/validate-body-assets.mjs                       # assets, and profiles against them
 node scripts/build-anatomy.mjs <upper> <lower> --context <skeleton>
 ```
+
+The source meshes are large and are deliberately not committed, so
+`build-body.mjs` needs them. `build-body-profile.mjs` does not: a profile is
+only a measurement of the mesh that is already here, which is why the validator
+can recompute it and fail when the committed table has drifted from the mesh it
+claims to describe.
 
 ## Licence
 
