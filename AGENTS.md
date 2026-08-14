@@ -118,6 +118,11 @@ Two rules fall out of it.
   else. Training age changes the gain-rate model only, so it appears for muscle
   gain only. Asking `stay-healthy` for a goal weight collects a number to throw
   away.
+- **Coverage is prescribed, not selected.** The user never chooses muscles.
+  The app covers the full body automatically, while the environment choice only
+  selects viable variants. The two environments are a defined-minimum home gym
+  and a full commercial gym; no-equipment and band-only are not standalone
+  equivalents.
 - **Never a silent default.** An untouched safety group is not a group of no
   answers; it is an unanswered group, and the flow will not move until the
   person has ticked something or said plainly that none of it applies. The same

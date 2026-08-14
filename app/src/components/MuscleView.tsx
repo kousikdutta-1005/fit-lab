@@ -19,12 +19,9 @@ const MuscleScene = lazy(() => import("./MuscleScene"))
 export function MuscleView({
   active,
   height = 300,
-  onToggle,
 }: {
   active: MuscleId[]
   height?: number
-  /** Given when the model itself is a way of choosing, not only a picture. */
-  onToggle?: (id: MuscleId) => void
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [show, setShow] = useState(false)
@@ -61,7 +58,7 @@ export function MuscleView({
     <div ref={ref} style={{ height, position: "relative", maxWidth: 460, margin: "0 auto" }}>
       {show ? (
         <Suspense fallback={<Placeholder height={height} />}>
-          <MuscleScene active={active} height={height} onToggle={onToggle} />
+          <MuscleScene active={active} height={height} />
         </Suspense>
       ) : (
         <Placeholder height={height} />

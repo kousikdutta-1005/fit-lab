@@ -20,7 +20,7 @@ import type { Sex } from "./calc.ts"
 import type { GoalKind, TrainingAge } from "./goals.ts"
 import type { ConditionId, ReadinessId } from "./screening.ts"
 import { readinessItems } from "./screening.ts"
-import type { MuscleId, Place } from "../data/exercises.ts"
+import type { Place } from "../data/exercises.ts"
 
 export type Stage = "intro" | "body" | "safety" | "goal" | "result"
 
@@ -169,7 +169,6 @@ export type GoalState = {
   weeks: number | null
   trainingAge: TrainingAge | null
   place: Place | null
-  focus: MuscleId[]
 }
 
 export function goalComplete(state: GoalState): boolean {
@@ -178,6 +177,5 @@ export function goalComplete(state: GoalState): boolean {
   if (fields.target && state.targetWeightKg === null) return false
   if (fields.timeline && state.weeks === null) return false
   if (fields.trainingAge && state.trainingAge === null) return false
-  if (state.place === null) return false
-  return state.focus.length > 0
+  return state.place !== null
 }

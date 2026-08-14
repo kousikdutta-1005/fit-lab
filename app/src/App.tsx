@@ -66,8 +66,7 @@ export default function App() {
     targetWeightKg: jump ? 72 : null,
     weeks: jump ? 12 : null,
     trainingAge: jump ? "none" : null,
-    place: jump ? "gym" : null,
-    focus: jump ? ["chest", "back", "quads"] : [],
+    place: jump ? "commercial-gym" : null,
   })
 
   const nodes: StageNode[] = [
@@ -230,7 +229,6 @@ export default function App() {
         health={health}
         intent={intent}
         place={goal.place}
-        focus={goal.focus}
         ancestry={ancestry}
         onAncestry={setAncestry}
         onRestart={() => setStage("intro")}

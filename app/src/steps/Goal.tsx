@@ -4,7 +4,7 @@ import { Stage } from "../components/Stage"
 import { goalComplete, goalFields } from "../lib/flow"
 import type { GoalState } from "../lib/flow"
 import type { GoalKind, TrainingAge } from "../lib/goals"
-import type { MuscleId, Place } from "../data/exercises"
+import type { Place } from "../data/exercises"
 import { MUSCLES } from "../data/exercises"
 import type { StageNode } from "./nodes"
 
@@ -15,8 +15,9 @@ import type { StageNode } from "./nodes"
  * answer is ignored is friction wearing a label. Stay healthy and get stronger
  * need no target weight and no timeline: the assessment for those does not use
  * either. Only build muscle needs training age, because that is the one place
- * it changes a rate. Where you train changes which exercises exist for you, so
- * everybody is asked that.
+ * it changes a rate. The training environment only selects viable variants;
+ * the app prescribes complete movement coverage rather than asking the person
+ * to choose body parts.
  *
  * Two questions were removed outright. How hard your sets will be, and how many
  * days a week you will train, were both asked in onboarding and then used only
@@ -45,11 +46,12 @@ const TRAINING_AGES: { id: TrainingAge; label: string }[] = [
   { id: "3-plus", label: "3+ years" },
 ]
 
-const PLACES: { id: Place; label: string; note: string; glyph: "home" | "band" | "gym" }[] = [
-  { id: "home-nothing", label: "Home", note: "Nothing at all", glyph: "home" },
-  { id: "home-band", label: "Home, band", note: "Or dumbbells", glyph: "band" },
-  { id: "gym", label: "Gym", note: "Full kit", glyph: "gym" },
+const PLACES: { id: Place; label: string; note: string; glyph: "home" | "gym" }[] = [
+  { id: "home-gym", label: "Home gym", note: "Defined minimum kit", glyph: "home" },
+  { id: "commercial-gym", label: "Commercial gym", note: "Full facility", glyph: "gym" },
 ]
+
+const FULL_BODY = MUSCLES.map((muscle) => muscle.id)
 
 export function GoalStage({
   nodes,
@@ -70,12 +72,6 @@ export function GoalStage({
   const fields = goalFields(state.kind)
   const done = goalComplete(state)
 
-  function toggleMuscle(id: MuscleId) {
-    onChange({
-      focus: state.focus.includes(id) ? state.focus.filter((x) => x !== id) : [...state.focus, id],
-    })
-  }
-
   const waiting = done
     ? null
     : state.kind === null
@@ -88,7 +84,7 @@ export function GoalStage({
             ? "Say how long you have trained"
             : state.place === null
               ? "Say where you will train"
-              : "Pick at least one muscle"
+              : null
 
   return (
     <Stage
@@ -101,12 +97,8 @@ export function GoalStage({
       waiting={waiting}
       scene={(height) => (
         <>
-          <MuscleView active={state.focus} height={height} onToggle={toggleMuscle} />
-          <p className="scene-strip mono">
-            {state.focus.length === 0
-              ? "Tap a muscle"
-              : state.focus.map((id) => MUSCLES.find((m) => m.id === id)?.label).join(" · ")}
-          </p>
+          <MuscleView active={FULL_BODY} height={height} />
+          <p className="scene-strip mono">Full-body movement foundation</p>
         </>
       )}
     >
@@ -166,37 +158,20 @@ export function GoalStage({
       )}
 
       <Tiles
-        label="Where you train"
-        columns={3}
+        label="Training environment"
+        columns={2}
         compact
         value={state.place}
         onChange={(place) => onChange({ place })}
         options={PLACES}
       />
 
-      <div className="muscle-pick" role="group" aria-label="Which parts do you want exercises for">
-        <span className="field-label">Which parts</span>
-        <div className="pills">
-          {MUSCLES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              className="pill"
-              aria-pressed={state.focus.includes(m.id)}
-              onClick={() => toggleMuscle(m.id)}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <Help title="Why so few">
         <p>
           Only what changes an answer is asked. A target weight and a timeline are the two halves of a rate,
           so they appear for fat loss and muscle gain and nowhere else. Training history only changes the
-          rate muscle arrives at, so it appears for muscle and nowhere else. Where you train decides which
-          exercises exist for you.
+          rate muscle arrives at, so it appears for muscle and nowhere else. Your environment only decides
+          which movement variants are available. The app chooses complete full-body coverage.
         </p>
         <p>
           How hard your sets are, and how many days a week you train, are the two things that most decide
@@ -204,7 +179,10 @@ export function GoalStage({
           point would be a prediction about a future you, and a warning built on a guess is worse than no
           warning. Both are named on the result page instead.
         </p>
-        <p>The anatomy is the Open 3D Model of Human Anatomy, CC BY-SA 4.0. Tap it or use the buttons.</p>
+        <p>
+          The anatomy is the Open 3D Model of Human Anatomy, CC BY-SA 4.0. It shows the full-body coverage;
+          it is not a body-part selector.
+        </p>
       </Help>
     </Stage>
   )

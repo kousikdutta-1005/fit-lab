@@ -157,8 +157,7 @@ describe("the goal asks only what its own goal uses", () => {
     targetWeightKg: null,
     weeks: null,
     trainingAge: null,
-    place: "gym",
-    focus: ["chest"],
+    place: "home-gym",
   }
 
   it("wants a target and a timeline for the two weight goals only", () => {
@@ -185,10 +184,11 @@ describe("the goal asks only what its own goal uses", () => {
     assert.equal(goalComplete({ ...muscle, trainingAge: "1-3" }), true)
   })
 
-  it("always needs somewhere to train and something to train", () => {
+  it("needs a training environment but never a muscle choice", () => {
     const ok: GoalState = { ...base, kind: "stay-healthy" }
     assert.equal(goalComplete({ ...ok, place: null }), false)
-    assert.equal(goalComplete({ ...ok, focus: [] }), false)
+    assert.equal(goalComplete(ok), true)
+    assert.equal("focus" in ok, false)
   })
 })
 
@@ -319,8 +319,7 @@ describe("a target weight is set, not seeded", () => {
     targetWeightKg: null,
     weeks: 12,
     trainingAge: null,
-    place: "gym",
-    focus: ["core"],
+    place: "commercial-gym",
   }
 
   it("cannot complete a weight goal from a number nobody touched", () => {

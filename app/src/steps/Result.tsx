@@ -24,8 +24,8 @@ import type { Intent } from "../lib/goals"
 import { assess } from "../lib/goals"
 import type { HealthAnswers } from "../lib/screening"
 import { notesDefaultOpen, screen } from "../lib/screening"
-import type { MuscleId, Place } from "../data/exercises"
-import { MUSCLES, gapFor, pickExercises } from "../data/exercises"
+import type { Place } from "../data/exercises"
+import { fullBodyFoundation, gapFor } from "../data/exercises"
 
 /**
  * The read.
@@ -67,7 +67,6 @@ export function Result({
   health,
   intent,
   place,
-  focus,
   ancestry,
   onAncestry,
   onRestart,
@@ -76,7 +75,6 @@ export function Result({
   health: HealthAnswers
   intent: Intent
   place: Place
-  focus: MuscleId[]
   ancestry: Ancestry
   /** Optional, after the fact, and it really does move the thresholds. */
   onAncestry: (a: Ancestry) => void
@@ -124,6 +122,8 @@ export function Result({
   const ceiling = ffmiCeiling(profile.sex)
   const verdict = assess(profile, intent, bfMid ?? 25)
   const gap = gapFor(place)
+  const foundation = fullBodyFoundation(place)
+  const fullBody = foundation.map(({ muscle }) => muscle.id)
 
   return (
     <div className="read">
@@ -327,46 +327,43 @@ export function Result({
       <section className="read-section">
         <div className="section-head">
           <Glyph name="dumbbell" size={16} />
-          <h2 className="section-title">What to do</h2>
+          <h2 className="section-title">Current full-body foundation</h2>
         </div>
 
+        <p className="read-note">
+          The app chooses complete movement coverage. Your training environment only selects the available
+          variants. This is the current structural catalogue; the next evidence layer will replace and verify
+          the final exercise set.
+        </p>
+
         <div className="card evidence">
-          <MuscleView active={focus} height={300} />
-          <p className="scene-strip mono">Lit in red: what you picked</p>
+          <MuscleView active={fullBody} height={300} />
+          <p className="scene-strip mono">Lit in red: complete full-body coverage</p>
         </div>
 
         <div className="picks">
-          {focus.map((id) => {
-            const muscle = MUSCLES.find((m) => m.id === id)
-            const picks = pickExercises(id, place)
-            if (!muscle) return null
+          {foundation.map(({ muscle, exercises }) => {
             return (
-              <div key={id} className="pick">
+              <div key={muscle.id} className="pick">
                 <div className="pick-head">
                   <h3 className="pick-title">{muscle.label}</h3>
                   <span className="pick-plain">{muscle.plain}</span>
                 </div>
-                {picks.length === 0 ? (
+                {exercises.length === 0 ? (
                   <p className="read-note">
-                    Nothing here can be trained properly with what you have. That is the honest answer rather
-                    than a bad substitute.
+                    The current catalogue has no variant for this environment. The evidence layer must close
+                    that gap before the catalogue is final.
                   </p>
                 ) : (
                   <ol className="exlist">
-                    {picks.map((e, i) => (
+                    {exercises.map((e, i) => (
                       <li key={e.id} className="card ex">
-                        <details>
-                          <summary className="ex-summary tap">
-                            <span className="ex-index tnum" aria-hidden="true">
-                              {i + 1}
-                            </span>
-                            <span className="ex-name">{e.name}</span>
-                            <span className="ex-mark mono" aria-hidden="true">
-                              WHY
-                            </span>
-                          </summary>
-                          <p className="why-body">{e.why}</p>
-                        </details>
+                        <div className="ex-summary">
+                          <span className="ex-index tnum" aria-hidden="true">
+                            {i + 1}
+                          </span>
+                          <span className="ex-name">{e.name}</span>
+                        </div>
                       </li>
                     ))}
                   </ol>
@@ -378,7 +375,7 @@ export function Result({
 
         {gap && (
           <div className="read-section">
-            <Callout tone="warn" title="What your setup cannot do">
+            <Callout tone="note" title="Home-gym definition">
               <p style={{ margin: 0 }}>{gap}</p>
             </Callout>
           </div>
@@ -419,9 +416,8 @@ export function Result({
             on this page rests on them.
           </p>
           <p className="why-body">
-            The exercises are not ranked by muscle activation studies. Activation is not growth. They are
-            ranked on whether you can keep making them harder, whether they load the muscle in a stretched
-            position, whether they are safe on your own, and whether you can get at the equipment.
+            The exercise list below is the temporary catalogue carried forward for this structural layer.
+            It is not the final evidence-reviewed prescription.
           </p>
           <p className="why-body">
             Two things decide most of whether a year of training changes anything: how hard your sets are, and

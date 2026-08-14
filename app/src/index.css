@@ -663,37 +663,6 @@
     margin-top: 2px;
   }
 
-  /* ----------------------------------------------------------------- pills */
-
-  .pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-  }
-
-  .pill {
-    min-height: 44px;
-    padding: 0 0.85rem;
-    border-radius: 999px;
-    border: 1px solid var(--edge);
-    background: rgba(255, 255, 255, 0.026);
-    color: var(--muted);
-    font: inherit;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-
-  .pill[aria-pressed="true"] {
-    border-color: var(--cyan);
-    background: rgba(75, 227, 208, 0.12);
-    color: var(--ink);
-  }
-
-  .muscle-pick {
-    display: grid;
-    gap: 0.35rem;
-  }
-
   /* ---------------------------------------------------------------- checks */
 
   .group {
@@ -1247,7 +1216,6 @@
     align-items: center;
     gap: 0.6rem;
     padding: 0.5rem 0.8rem;
-    cursor: pointer;
   }
 
   .ex-index {
@@ -1261,18 +1229,6 @@
     font-weight: 500;
     font-size: 0.92rem;
     line-height: 1.3;
-  }
-
-  .ex-mark {
-    flex: 0 0 auto;
-    color: var(--cyan);
-    font-size: 0.58rem;
-    letter-spacing: 0.14em;
-  }
-
-  .ex .why-body {
-    padding: 0 0.8rem 0.7rem;
-    margin: 0;
   }
 
   /* ----------------------------------------------------------- wide screen */

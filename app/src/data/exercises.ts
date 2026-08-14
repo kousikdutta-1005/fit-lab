@@ -1,15 +1,14 @@
 /**
- * Curated exercises.
+ * Temporary exercise catalogue.
  *
  * The public dataset this started from (yuhonas/free-exercise-db, public domain)
  * has 873 exercises, but only 131 of them need no equipment, glutes have 22
  * entries against 148 for quads, and nothing in it knows what a 700 square foot
  * flat with a family in it is like. So this is hand-built instead.
  *
- * Ranking is NOT done on EMG activation. Most published "best exercise" lists
- * trace back to EMG studies, and EMG amplitude is not muscle growth. Each
- * exercise here carries the criterion it actually wins on, and the criteria are
- * shown to the reader rather than hidden behind a score.
+ * This legacy catalogue remains only so the structural full-body flow has
+ * variants to display. The evidence layer that follows this change will replace
+ * and verify the catalogue; this file is not the final prescription.
  */
 
 export type MuscleId =
@@ -116,12 +115,13 @@ export const EXERCISES: Exercise[] = [
   { id: "ab-wheel", name: "Ab wheel rollout", muscle: "core", equipment: "none", quiet: true, lengthened: true, overload: "workable", why: "The hardest thing you can do to a core at home, and the wheel costs very little." },
 ]
 
-export type Place = "home-nothing" | "home-band" | "gym"
+export type Place = "home-gym" | "commercial-gym"
+
+const HOME_GYM_EQUIPMENT: Equipment[] = ["none", "band", "bar", "dumbbell", "bench"]
+const ALL_EQUIPMENT: Equipment[] = ["none", "band", "bar", "dumbbell", "barbell", "machine", "bench"]
 
 export function equipmentFor(place: Place): Equipment[] {
-  if (place === "home-nothing") return ["none"]
-  if (place === "home-band") return ["none", "band"]
-  return ["none", "band", "bar", "dumbbell", "barbell", "machine", "bench"]
+  return place === "home-gym" ? [...HOME_GYM_EQUIPMENT] : [...ALL_EQUIPMENT]
 }
 
 export function pickExercises(muscle: MuscleId, place: Place, limit = 3): Exercise[] {
@@ -134,14 +134,28 @@ export function pickExercises(muscle: MuscleId, place: Place, limit = 3): Exerci
   return [...pool].sort((a, b) => score(b) - score(a)).slice(0, limit)
 }
 
+export type FoundationGroup = {
+  muscle: (typeof MUSCLES)[number]
+  exercises: Exercise[]
+}
+
 /**
- * The honest warning about what a given setting cannot do. Saying this is more
- * useful than offering a workaround that does not work.
+ * Every current muscle group appears once. The environment changes the
+ * available variants, never the coverage.
+ */
+export function fullBodyFoundation(place: Place, limit = 3): FoundationGroup[] {
+  return MUSCLES.map((muscle) => ({
+    muscle,
+    exercises: pickExercises(muscle.id, place, limit),
+  }))
+}
+
+/**
+ * The home-gym definition stays explicit while the evidence layer determines
+ * the rest of the minimum kit. A commercial gym needs no environment note.
  */
 export function gapFor(place: Place): string | null {
-  if (place === "home-nothing")
-    return "With no equipment at all, your back and biceps are the real casualties. There is nothing to pull against, and pulling is half of what a body does. Rows under a table help. A resistance band, which costs a few hundred rupees, solves it properly and is the single highest-value thing you can buy for training at home."
-  if (place === "home-band")
-    return "A band covers almost everything. What it cannot do is load your legs heavily once they get strong, because your legs are stronger than any band. Split squats and single-leg work carry you a long way before that becomes the limit."
-  return null
+  return place === "home-gym"
+    ? "Home gym currently means at least adjustable dumbbells, elastic bands with a safe anchor, a bench, and a safe pull-up solution. The next evidence layer will define any remaining essential kit before this becomes the final catalogue."
+    : null
 }

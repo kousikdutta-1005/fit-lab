@@ -15,9 +15,9 @@ There are three moments where you give it anything, and the rule for all three i
 
 1. **The body.** Sex at birth, age, height, weight, waist, neck, and hip for women because that is the only place the formula uses it. A tape measure, not a smart scale. The figure holds the screen and answers each reading as you set it. Nothing is filled in for you: sex starts unanswered, and until you answer it the figure is a plain outline labelled as an illustration, because both base meshes are sexed and drawing one at you would be a guess. Every tape opens on a starting number, and that number only becomes your answer once you have actually moved it.
 2. **Safety.** Physical readiness before any goal, and a screen for disordered eating before any body-composition target. Both gates come before the assessment, not after it. Two groups of tick-what-applies cards, each of which has to be closed explicitly: an untouched group is never recorded as a no. Change your sex afterwards and the health group goes back to unanswered, because "none of these apply" was said about a list that did not contain the pregnancy question. Ticking a bone or joint problem offers knee and back pain; ticking a long-term condition offers the medical list; taking either back withdraws whatever it offered. Every note the screen produces is an instruction, so it is shown open on the result rather than folded.
-3. **The goal.** Conditional on the goal itself. A target weight and a timeline appear for fat loss and muscle gain, because together they are a rate; training history appears for muscle gain, because that is the one place it changes the rate; where you train appears for everybody, because it decides which exercises exist for you. Nothing else.
+3. **The goal.** Conditional on the goal itself. A target weight and a timeline appear for fat loss and muscle gain, because together they are a rate; training history appears for muscle gain, because that is the one place it changes the rate; training environment appears for everybody, because it selects viable variants. There are exactly two environments: a home gym with a defined minimum kit, and a full commercial gym. The app chooses complete full-body movement coverage; the user does not choose muscles.
 
-Then the read: whether the goal is reachable and how long it honestly takes, where every number places you against 71,543 measured adults, and the exercises worth your time shown on real anatomy.
+Then the read: whether the goal is reachable and how long it honestly takes, where every number places you against 71,543 measured adults, and the current full-body foundation shown on real anatomy. The exercise catalogue in this structural layer is provisional and will be replaced by the evidence layer.
 
 **Asked for, and then removed.** A photo step, a character creator with skin, hair and facial hair, sliders asking you to guess your own shoulder width and muscle mass, and a ten-question personality inventory. None of them changed a number on the result page. The shortest honest description of that flow is that it asked for twenty-eight things in order to use nine. Ancestry survives as an optional refinement offered *after* the read, next to the two thresholds it actually moves.
 
@@ -112,7 +112,7 @@ at every setting, that feet stay on the floor, that no cross-section becomes a
 plank or a barrel, that neighbouring vertices are never torn apart, and that
 nothing anywhere goes to infinity.
 
-The muscle anatomy is real too, and is used to show what an exercise trains. On the goal screen you pick muscles off the model itself; the buttons underneath do the same job for the keyboard and for any device that never loads the canvas.
+The muscle anatomy is real too, and is used to show the complete coverage the app prescribes. It is display-only: neither the model nor a fallback control asks the user to choose muscles.
 
 The figure has no skin tone and no hair, and that is deliberate rather than unfinished. The 3D layer always rendered a teal scan, and the flat fallback now matches it. It also settles a problem the old character creator had: a palette with a preselected swatch makes one skin tone the default, and PRODUCT.md says no body may be treated as the default or the goal state. A scan has no tone to default to, and the only thing this product claims to show — the shape your own measurements make — is untouched by dropping the rest.
 
@@ -192,7 +192,7 @@ These no longer drive anything in the product; the trait questionnaire was remov
 
 So a user selecting a non-Asian, non-European ancestry should expect the tool to tell them it is using borrowed numbers. That is worse than I would like and better than pretending otherwise.
 
-**Rate-of-gain models are practitioner models on narrow cohorts**, tape measurement carries ±2–5 cm of error, and "best exercise per muscle group" claims mostly trace to EMG studies, where amplitude is not hypertrophy. Exercises are ranked on stated criteria instead: progressive overload potential, loading in a lengthened position, safety unsupervised, and whether you can access the equipment.
+**Rate-of-gain models are practitioner models on narrow cohorts**, tape measurement carries ±2–5 cm of error, and "best exercise per muscle group" claims mostly trace to EMG studies, where amplitude is not hypertrophy. The current exercise catalogue is retained only to support the automatic full-body flow and environment filtering; the next evidence layer must replace and verify it before it becomes a final prescription.
 
 ## Where the models come from
 
@@ -216,15 +216,15 @@ subject. 12MB becomes 0.74MB.
 
 ## Data
 
-Exercise data comes from [`yuhonas/free-exercise-db`](https://github.com/yuhonas/free-exercise-db). Licence checked: Unlicense, true public domain, no attribution or share-alike obligation. 873 exercises with structured fields and instructions.
+The source dataset is [`yuhonas/free-exercise-db`](https://github.com/yuhonas/free-exercise-db), under the Unlicense. The small catalogue currently rendered by the app is provisional: this layer only establishes automatic full-body coverage and the two environment filters.
 
-The gaps are real:
+The source-data gaps the evidence layer must resolve are real:
 
 - Only **131 of 873** need no equipment.
 - **Glutes have 22 primary exercises. Quads have 148.**
 - No small-space, floor-only or no-noise variants.
 
-The curation is hand work, and it is the design work rather than a chore before it.
+The final curation is deliberately deferred to that evidence layer rather than invented here.
 
 MuscleWiki and ExRx are proprietary, exercisedb.io is paid, and wger is CC BY-SA, usable but with obligations for little gain.
 
