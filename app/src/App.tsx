@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react"
+import type { ReactNode } from "react"
+import { AnimatePresence, MotionConfig, motion } from "framer-motion"
 import { DEFAULT_MUSCLE, defaultShoulderRatio } from "./lib/figure"
 import type { Ancestry, Profile, Sex } from "./lib/calc"
 import { navyBodyFat } from "./lib/calc"
@@ -154,10 +156,13 @@ export default function App() {
     setConditions(readiness.conditions)
   }
 
-  if (stage === "intro") return <Intro onStart={() => setStage("body")} />
+  let content: ReactNode
+  let contentKey: string = stage
 
-  if (stage === "body") {
-    return (
+  if (stage === "intro") {
+    content = <Intro onStart={() => setStage("body")} />
+  } else if (stage === "body") {
+    content = (
       <BodyStage
         nodes={nodes}
         sex={sex}
@@ -169,10 +174,8 @@ export default function App() {
         onNext={() => setStage("safety")}
       />
     )
-  }
-
-  if (stage === "safety") {
-    return (
+  } else if (stage === "safety") {
+    content = (
       <SafetyStage
         nodes={nodes}
         sex={sex}
@@ -190,10 +193,8 @@ export default function App() {
         onNext={() => setStage("goal")}
       />
     )
-  }
-
-  if (stage === "goal") {
-    return (
+  } else if (stage === "goal") {
+    content = (
       <GoalStage
         nodes={nodes}
         state={goal}
@@ -203,9 +204,7 @@ export default function App() {
         onNext={() => setStage("result")}
       />
     )
-  }
-
-  if (profile && goal.kind && goal.place) {
+  } else if (profile && goal.kind && goal.place) {
     const health: HealthAnswers = {
       chestPain: flags.includes("chestPain"),
       faintness: flags.includes("faintness"),
@@ -223,7 +222,7 @@ export default function App() {
       weeks: goal.weeks ?? undefined,
       trainingAge: goal.trainingAge ?? undefined,
     }
-    return (
+    content = (
       <Result
         profile={profile}
         health={health}
@@ -234,9 +233,26 @@ export default function App() {
         onRestart={() => setStage("intro")}
       />
     )
+  } else {
+    // Only reachable by deep-linking past the data, so it goes back to the
+    // start rather than rendering a read built out of nothing.
+    content = <Intro onStart={() => setStage("body")} />
+    contentKey = "intro"
   }
 
-  // Only reachable by deep-linking past the data, so it goes back to the start
-  // rather than rendering a read built out of nothing.
-  return <Intro onStart={() => setStage("body")} />
+  return (
+    <MotionConfig reducedMotion="user">
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={contentKey}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          {content}
+        </motion.div>
+      </AnimatePresence>
+    </MotionConfig>
+  )
 }

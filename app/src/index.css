@@ -1205,6 +1205,7 @@
   }
 
   .timeline-rail {
+    position: relative;
     height: 7px;
     border-radius: 999px;
     background: color-mix(in oklch, var(--ink) 6%, transparent);

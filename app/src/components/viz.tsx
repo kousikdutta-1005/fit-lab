@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import type { ReactNode } from "react"
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import type { Tone } from "../lib/calc"
 
 function ordinal(n: number): string {
@@ -43,6 +44,44 @@ export function Ticker({ value, dp = 1, suffix = "" }: { value: number; dp?: num
       {shown.toFixed(dp)}
       {suffix && <span className="readout-suffix">{suffix}</span>}
     </span>
+  )
+}
+
+/**
+ * The rail + honest-range band drawn as a Recharts horizontal bar (a
+ * transparent leading "spacer" bar stacked before a coloured "band" bar),
+ * inside a ResponsiveContainer so it tracks the card's actual width. The
+ * zone-boundary ticks and the value needle are drawn as plain positioned
+ * elements in the parent (see Gauge) since they are crisp 1px/3px markers
+ * that read better pixel-snapped than as SVG reference lines at this scale.
+ */
+function BandChart({
+  min,
+  max,
+  low,
+  high,
+  color,
+}: {
+  min: number
+  max: number
+  low: number
+  high: number
+  color: string
+}) {
+  const span = max - min
+  const data = [{ name: "v", spacer: low - min, band: Math.max(high - low, span * 0.015) }]
+
+  return (
+    <div style={{ position: "absolute", inset: 0 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart layout="vertical" data={data} margin={{ top: 9, right: 0, bottom: 9, left: 0 }}>
+          <XAxis type="number" domain={[0, span]} hide />
+          <YAxis type="category" dataKey="name" hide />
+          <Bar dataKey="spacer" stackId="band" fill="transparent" barSize={5} isAnimationActive={false} />
+          <Bar dataKey="band" stackId="band" fill={color} barSize={5} radius={999} isAnimationActive={false} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   )
 }
 
@@ -102,17 +141,9 @@ export function Gauge({
       </div>
 
       <div className="gauge-track">
-        <div className="gauge-rail">
-          <div
-            className="gauge-band"
-            style={{
-              left: `${pct(a)}%`,
-              width: `${Math.max(1.5, pct(b) - pct(a))}%`,
-              background: color,
-              boxShadow: `0 0 12px ${color}`,
-            }}
-          />
-        </div>
+        <div className="gauge-rail" aria-hidden="true" />
+
+        <BandChart min={min} max={max} low={a} high={b} color={color} />
 
         {stops.map((s) => (
           <div key={s.label} className="gauge-stop" style={{ left: `${pct(s.at)}%` }}>
@@ -156,7 +187,6 @@ export function Gauge({
 /** A goal against the time it honestly takes. */
 export function Timeline({ wanted, honest }: { wanted: number; honest: number }) {
   const max = Math.max(wanted, honest)
-  const pct = (v: number) => (v / max) * 100
   const over = honest > wanted
 
   return (
@@ -173,14 +203,17 @@ export function Timeline({ wanted, honest }: { wanted: number; honest: number })
             </span>
           </div>
           <div className="timeline-rail">
-            <div
-              className="timeline-fill"
-              style={{
-                width: `${pct(row.weeks)}%`,
-                background: row.color,
-                boxShadow: `0 0 12px ${row.color}`,
-              }}
-            />
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                layout="vertical"
+                data={[{ name: row.label, weeks: row.weeks }]}
+                margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+              >
+                <XAxis type="number" domain={[0, max]} hide />
+                <YAxis type="category" dataKey="name" hide />
+                <Bar dataKey="weeks" fill={row.color} radius={999} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       ))}
