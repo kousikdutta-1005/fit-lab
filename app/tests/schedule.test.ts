@@ -321,28 +321,29 @@ describe("buildWeeklySchedule", () => {
           scheduledWeeklySets += scheduledSets
         })
 
-        it("hits every rendered anatomy region on at least two distinct days for every build-muscle training age", () => {
-          for (const place of PLACES) {
-            for (const trainingAge of ["none", "under-1", "1-3", "3-plus"] as TrainingAge[]) {
-              const { slots, doses, schedule } = scheduleFor(place, "build-muscle", trainingAge, CLEAR, CLEAR_DOSE)
-              const daysByRegion = new Map<string, Set<number>>()
-              schedule.days.forEach((day) => {
-                day.items.forEach((item) => {
-                  if (doses[item.slotIndex].kind !== "resistance") return
-                  const anatomy = capacityById(slots[item.slotIndex].capacity).anatomy
-                  if (!anatomy) return
-                  const days = daysByRegion.get(anatomy) ?? new Set<number>()
-                  days.add(day.dayNumber)
-                  daysByRegion.set(anatomy, days)
-                })
-              })
-              for (const [region, days] of daysByRegion) {
-                assert.equal(days.size >= 2, true, `${place}/${trainingAge}/${region} only appears on ${days.size} day(s)`)
-              }
-            }
-          }
-        })
         assert.equal(scheduledWeeklySets, summary.totalWeeklySets)
+      }
+    }
+  })
+
+  it("hits every rendered anatomy region on at least two distinct days for every build-muscle training age", () => {
+    for (const place of PLACES) {
+      for (const trainingAge of ["none", "under-1", "1-3", "3-plus"] as TrainingAge[]) {
+        const { slots, doses, schedule } = scheduleFor(place, "build-muscle", trainingAge, CLEAR, CLEAR_DOSE)
+        const daysByRegion = new Map<string, Set<number>>()
+        schedule.days.forEach((day) => {
+          day.items.forEach((item) => {
+            if (doses[item.slotIndex].kind !== "resistance") return
+            const anatomy = capacityById(slots[item.slotIndex].capacity).anatomy
+            if (!anatomy) return
+            const days = daysByRegion.get(anatomy) ?? new Set<number>()
+            days.add(day.dayNumber)
+            daysByRegion.set(anatomy, days)
+          })
+        })
+        for (const [region, days] of daysByRegion) {
+          assert.equal(days.size >= 2, true, `${place}/${trainingAge}/${region} only appears on ${days.size} day(s)`)
+        }
       }
     }
   })
