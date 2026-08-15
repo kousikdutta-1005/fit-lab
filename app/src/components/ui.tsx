@@ -1,4 +1,6 @@
 import type { ReactNode } from "react"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Card } from "@/components/ui/card"
 
 export function Kicker({ children }: { children: ReactNode }) {
   return <p className="kicker">{children}</p>
@@ -37,12 +39,12 @@ export function Callout({
 }) {
   const color = tone === "stop" ? "var(--rose)" : tone === "warn" ? "var(--amber)" : "var(--cyan)"
   return (
-    <div className="card" style={{ padding: "0.95rem 1.05rem", borderLeft: `3px solid ${color}` }}>
+    <Card className="card" style={{ padding: "0.95rem 1.05rem", borderLeft: `3px solid ${color}` }}>
       <p style={{ margin: 0, fontWeight: 600, color }}>{title}</p>
-      <div style={{ marginTop: 6, color: "var(--muted)", lineHeight: 1.6, fontSize: "0.94rem" }}>
+      <div style={{ marginTop: 6, color: "var(--ink-muted)", lineHeight: 1.6, fontSize: "0.94rem" }}>
         {children}
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -51,8 +53,9 @@ export function Callout({
  * demand nine screens of scrolling before the reader knows what they were
  * told. Nothing is deleted to achieve that; it is folded, and one tap away.
  *
- * Uses a native details element so it works without JavaScript, is keyboard
- * operable for free, and is announced correctly by screen readers.
+ * Built on shadcn's (Radix) Accordion primitive for correct keyboard
+ * operability and screen-reader state announcements — same external API as
+ * before (title/hint/defaultOpen/children), so no caller needed to change.
  */
 export function Disclosure({
   title,
@@ -66,17 +69,16 @@ export function Disclosure({
   children: ReactNode
 }) {
   return (
-    <details className="card disclosure" open={defaultOpen}>
-      <summary className="disclosure-summary tap">
-        <span>
-          <span className="disclosure-title">{title}</span>
-          {hint && <span className="disclosure-hint">{hint}</span>}
-        </span>
-        <span aria-hidden="true" className="disclosure-mark mono">
-          OPEN
-        </span>
-      </summary>
-      <div className="disclosure-body">{children}</div>
-    </details>
+    <Accordion type="single" collapsible defaultValue={defaultOpen ? "item" : undefined} className="disclosure-accordion">
+      <AccordionItem value="item" className="card disclosure">
+        <AccordionTrigger className="disclosure-summary tap">
+          <span>
+            <span className="disclosure-title">{title}</span>
+            {hint && <span className="disclosure-hint">{hint}</span>}
+          </span>
+        </AccordionTrigger>
+        <AccordionContent className="disclosure-body">{children}</AccordionContent>
+      </AccordionItem>
+    </Accordion>
   )
 }

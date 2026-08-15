@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { NodeProgress } from "./controls"
 import type { GlyphName } from "./controls"
 import { useMeasuredHeight } from "./use-measure"
+import { ThemeToggle } from "./ThemeToggle"
 
 /**
  * One data moment, composed as a scene.
@@ -42,8 +43,9 @@ export function Stage({
 
   return (
     <div className={scene ? "stage" : "stage stage-list"}>
-      <header className="stage-head">
+      <header className="stage-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
         <NodeProgress nodes={nodes} current={current} />
+        <ThemeToggle />
       </header>
 
       <div className="stage-main">

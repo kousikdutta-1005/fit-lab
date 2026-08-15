@@ -156,7 +156,7 @@ export function BodyView({
             margin: 0,
             fontSize: "0.6rem",
             lineHeight: 1.5,
-            color: "var(--muted)",
+            color: "var(--ink-muted)",
           }}
         >
           {presentation.limitNote}

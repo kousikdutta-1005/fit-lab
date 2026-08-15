@@ -1,6 +1,7 @@
 import { BodyView } from "../components/BodyView"
 import { DEFAULT_MUSCLE, defaultShoulderRatio, figureLabel } from "../lib/figure"
 import { useMeasuredHeight } from "../components/use-measure"
+import { ThemeToggle } from "../components/ThemeToggle"
 
 /**
  * The launch screen.
@@ -27,8 +28,9 @@ export function Intro({ onStart }: { onStart: () => void }) {
 
   return (
     <div className="stage stage-intro">
-      <header className="stage-head">
+      <header className="stage-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <p className="kicker">fit-lab</p>
+        <ThemeToggle />
       </header>
 
       <div className="stage-main">

@@ -4,6 +4,7 @@ import { SourcesPanel } from "../components/SourcesPanel"
 import { BodyView } from "../components/BodyView"
 import { MuscleView } from "../components/MuscleView"
 import { Glyph, Tiles } from "../components/controls"
+import { ThemeToggle } from "../components/ThemeToggle"
 import { DEFAULT_MUSCLE, defaultShoulderRatio, figureLabel } from "../lib/figure"
 import { Gauge, Timeline, ValueChip, VerdictCard } from "../components/viz"
 import { PERCENTILE_SOURCE, context, percentileOf } from "../lib/percentiles"
@@ -167,9 +168,12 @@ export function Result({
     <div className="read">
       <header className="read-head">
         <Kicker>Your read</Kicker>
-        <button type="button" className="ghost tap" onClick={onRestart}>
-          Start again
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <ThemeToggle />
+          <button type="button" className="ghost tap" onClick={onRestart}>
+            Start again
+          </button>
+        </div>
       </header>
 
       <VerdictCard
