@@ -83,6 +83,13 @@ export type Exercise = {
   prerequisite?: string
   /** The specific, honestly-scoped evidence claim shown to the reader. */
   why: string
+  /**
+   * The exercise is a reasonable inferred substitute for the tested modality,
+   * not itself directly tested (e.g. a dumbbell good-morning standing in for
+   * the barbell/machine version the cited trial actually used). Must be
+   * shown to the reader, never silently dropped.
+   */
+  uncertain?: boolean
   quarantined?: { reason: string }
 }
 
@@ -369,6 +376,76 @@ export const EXERCISES: Exercise[] = [
     why: "Trains anti-lateral-flexion trunk control, the companion demand to bird dog's anti-rotation.",
   },
 
+  // ── elbow_flexion (universal arm capacity — audit gap: biceps had no required capacity) ──
+  {
+    id: "db-incline-curl",
+    name: "Dumbbell incline curl",
+    capacity: "elbow_flexion",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "S",
+    evidenceCertainty: "mechanistic",
+    sourceIds: ["acsm-2026-position-stand"],
+    guideId: "g-exrx-incline-curl",
+    quiet: true,
+    why: "The arm-hanging-behind-torso position biases long-length loading of the biceps; current evidence favours or at worst matches this over a standing curl for hypertrophy, not a proven-superior claim.",
+  },
+
+  // ── elbow_extension (universal arm capacity — audit gap: only a mislabeled boxing wrist curl touched this anatomy) ──
+  {
+    id: "db-overhead-triceps-extension",
+    name: "Dumbbell overhead triceps extension",
+    capacity: "elbow_extension",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "S",
+    evidenceCertainty: "mechanistic",
+    sourceIds: ["acsm-2026-position-stand"],
+    guideId: "g-ace-triceps-extension",
+    quiet: true,
+    why: "The overhead position stretches the long head of the triceps under load; current evidence favours or at worst matches this over a pushdown for hypertrophy, not a proven-superior claim.",
+  },
+
+  // ── lumbar_extension (audit gap: distinct from hip_hinge — 45°/good-morning pattern, BFLH/erector evidence) ──
+  {
+    id: "barbell-good-morning-commercial",
+    name: "Barbell good morning",
+    capacity: "lumbar_extension",
+    environments: ["commercial-gym"],
+    tier: "A",
+    evidenceCertainty: "probable",
+    sourceIds: ["steele-2015-lumbar-extension"],
+    guideId: "g-exrx-good-morning",
+    quiet: true,
+    why: "Trains controlled lumbar-extensor loading distinct from a hip-hinge/deadlift; a dedicated lumbar-extension machine (if this facility has one) isolates the range further still.",
+  },
+  {
+    id: "db-good-morning-home",
+    name: "Dumbbell good morning",
+    capacity: "lumbar_extension",
+    environments: ["home-gym"],
+    tier: "B",
+    evidenceCertainty: "mechanistic",
+    sourceIds: ["steele-2015-lumbar-extension"],
+    guideId: "g-exrx-good-morning",
+    homeCeilingId: "ceiling-isolated-lumbar-extension",
+    uncertain: true,
+    quiet: true,
+    why: "The cited trial loaded isolated lumbar extension on a dedicated machine; a hand-held-dumbbell good-morning trains the same hinge pattern but is an inferred substitute, not itself tested.",
+  },
+
+  // ── floor_transfer (conditional: age >= 65 — audit's highest-priority gap) ──
+  {
+    id: "sit-to-stand-transfer",
+    name: "Sit-to-stand / floor-rise practice",
+    capacity: "floor_transfer",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "S",
+    evidenceCertainty: "limited",
+    sourceIds: ["araujo-2025-sitting-rising"],
+    guideId: "g-nhs-strength",
+    quiet: true,
+    why: "A low sitting-rising-test score is associated with a markedly higher mortality hazard — a predictive marker, not a proven training target. Training the test's components (strength, balance, flexibility) is the trainable target here; training-to-transfer-to-the-hazard-ratio itself is not proven.",
+  },
+
   // ── balance (conditional: age >= 65) ──
   {
     id: "balance-work",
@@ -493,30 +570,82 @@ export const EXERCISES: Exercise[] = [
   },
   {
     id: "outdoors-trip-prep",
-    name: "Trip preparation (planning, not training)",
+    name: "Trip preparation & safety referrals (planning, not training)",
     capacity: "outdoors_trip_prep",
     environments: ["home-gym", "commercial-gym"],
     tier: "B",
     evidenceCertainty: "established",
     sourceIds: [],
     guideId: "g-nps-ten-essentials",
+    referralGuideIds: ["g-bmc-climb-start", "g-bmctv-landing", "g-rlss-water-safety"],
     quiet: false,
-    prerequisite: "N/A — a planning checklist, not an exercise",
-    why: "Fitness prepares capacity, not judgement or trip planning; this is a referral to the official checklist, not something this app teaches.",
+    prerequisite: "N/A — a planning/safety checklist, not an exercise",
+    why: "Fitness prepares capacity, not judgement, trip planning, climbing technique or water competency; these are referrals to the official checklists, not something this app teaches.",
   },
   {
-    id: "outdoors-landing-awareness",
-    name: "Climbing/bouldering landing & safety referral",
-    capacity: "outdoors_landing_awareness",
+    id: "outdoors-stair-intervals",
+    name: "Stair-step intervals",
+    capacity: "outdoors_stair_intervals",
     environments: ["home-gym", "commercial-gym"],
     tier: "B",
-    evidenceCertainty: "established",
-    sourceIds: [],
-    guideId: "g-bmc-climb-start",
-    referralGuideIds: ["g-bmctv-landing", "g-rlss-water-safety"],
+    evidenceCertainty: "extrapolated",
+    sourceIds: ["who-2020-physical-activity", "momma-2022-dose-response"],
+    guideId: "g-ace-step-up",
+    prerequisite: "An established aerobic base",
     quiet: false,
-    prerequisite: "N/A — a safety referral, not an exercise this app teaches",
-    why: "Climbing technique, spotting/landing and water competency are taught skills this app does not teach; these are official referrals, not in-app instruction.",
+    why: "Short stepping-pace bouts on stairs/a step — general conditioning extrapolated from a step-up pattern, not a stair-specific injury or performance claim.",
+  },
+
+  // ── optional: yoga emphasis (useful, not a unique mechanism; not a substitute for the resistance/aerobic dose) ──
+  {
+    id: "yoga-beginner-session",
+    name: "Beginner guided yoga session",
+    capacity: "yoga_session",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "A",
+    evidenceCertainty: "probable",
+    sourceIds: ["sivaramakrishnan-2019-yoga-function", "wieland-2017-yoga-lbp-cochrane", "cramer-2019-yoga-safety"],
+    guideId: "g-nhs-yoga",
+    quiet: false,
+    why: "Yoga improves balance, flexibility and lower-limb strength vs. inactivity, with a smaller edge vs. other active exercise, and only a small/possibly-not-significant effect on chronic low-back pain — useful, not a unique mechanism, and not a substitute for the resistance/aerobic dose this app already prescribes. Injury rate is comparable to other activity; risk concentrates in inversions and unsupervised advanced poses.",
+  },
+
+  // ── optional: calisthenics emphasis (bodyweight-first progressions of the SAME evidence-graded patterns already in the foundation) ──
+  {
+    id: "calisthenics-incline-push-up",
+    name: "Incline push-up progression",
+    capacity: "calisthenics_push",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "A",
+    evidenceCertainty: "mechanistic",
+    sourceIds: ["acsm-2026-position-stand"],
+    guideId: "g-nasm-incline-push-up",
+    quiet: true,
+    why: "A regressed, bodyweight-only rung of the same horizontal-push pattern already in the foundation — elevate the hands to reduce load while building toward a full push-up, not a different movement demand.",
+  },
+  {
+    id: "calisthenics-band-assisted-pull-up",
+    name: "Band-assisted pull-up progression",
+    capacity: "calisthenics_pull",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "A",
+    evidenceCertainty: "mechanistic",
+    sourceIds: ["acsm-2026-position-stand"],
+    guideId: "g-nasm-band-assisted-pull-up",
+    quiet: true,
+    why: "A regressed, bodyweight-first rung of the same vertical-pull pattern already in the foundation — a rated anchor band reduces load while building toward an unassisted pull-up, not a different movement demand.",
+  },
+  {
+    id: "calisthenics-pistol-squat-progression",
+    name: "Pistol squat progression",
+    capacity: "calisthenics_squat",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "B",
+    evidenceCertainty: "mechanistic",
+    sourceIds: ["acsm-2026-position-stand"],
+    guideId: "g-ace-pistol-squat",
+    quiet: true,
+    why: "An advanced, single-leg bodyweight rung of the same knee-extension pattern already in the foundation — needs real single-leg strength, balance and ankle/hip mobility; use a support while building toward it.",
   },
 
   // ── quarantined: no valid guide, or claim not supportable ──
@@ -558,6 +687,45 @@ export const EXERCISES: Exercise[] = [
     quiet: true,
     why: "Quarantined: current evidence does not support static stretching preventing injury; shipping it under a prevention claim would overclaim.",
     quarantined: { reason: "The only available framing (injury prevention) is not supported by current evidence." },
+  },
+  {
+    id: "outdoors-hang-scapular-pull",
+    name: "Passive/active hang & scapular pull-up",
+    capacity: "grip_carry",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "B",
+    evidenceCertainty: "extrapolated",
+    sourceIds: [],
+    guideId: "",
+    quiet: true,
+    why: "Quarantined: no verified deep-linked primary guide (credentialed institutional page or video, not a search/blog result) was found for the passive/active hang or scapular pull-up progression despite checking ACE, NASM and ExRx exercise libraries. Requires a rated pull-up anchor per the existing structural-mounting safety rule even once a guide is sourced.",
+    quarantined: { reason: "No verified primary guide meeting the authority/format bar was found for this specific progression." },
+  },
+  {
+    id: "neck-isometric-work",
+    name: "Isometric neck strengthening",
+    capacity: "neck_isometric",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "B",
+    evidenceCertainty: "extrapolated",
+    sourceIds: [],
+    guideId: "",
+    quiet: true,
+    why: "Quarantined: no verified deep-linked primary guide from a credentialed source was found. Isometric neck work has no direct evidence of preventing concussion or head/neck injury in contact sport — never ship or imply that claim if a guide is added later.",
+    quarantined: { reason: "No verified primary guide meeting the authority/format bar; the only compelling framing (concussion protection) is explicitly unsupported and must never be used." },
+  },
+  {
+    id: "tibialis-raise",
+    name: "Tibialis / dorsiflexor raise",
+    capacity: "dorsiflexion",
+    environments: ["home-gym", "commercial-gym"],
+    tier: "B",
+    evidenceCertainty: "limited",
+    sourceIds: [],
+    guideId: "",
+    quiet: true,
+    why: "Quarantined: no verified deep-linked primary guide from a credentialed source was found. Foot/dorsiflexor-strengthening evidence for toe-clearance and fall prevention is conflicting, and this does NOT prevent shin splints (body mass, foot posture and training-load ROM changes are what the evidence actually supports there) — never overclaim if a guide is added later.",
+    quarantined: { reason: "No verified primary guide meeting the authority/format bar." },
   },
 ]
 

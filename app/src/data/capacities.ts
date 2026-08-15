@@ -26,8 +26,13 @@ export type CapacityId =
   | "scapular_cuff"
   | "grip_carry"
   | "trunk_control"
+  | "elbow_flexion"
+  | "elbow_extension"
+  | "lumbar_extension"
   | "balance"
   | "mobility"
+  // conditional, age/safety-gated only
+  | "floor_transfer"
   // optional, emphasis-gated only
   | "run_progression"
   | "run_hamstring_resilience"
@@ -36,7 +41,15 @@ export type CapacityId =
   | "boxing_conditioning"
   | "outdoors_loaded_carry_walk"
   | "outdoors_trip_prep"
-  | "outdoors_landing_awareness"
+  | "outdoors_stair_intervals"
+  | "yoga_session"
+  | "calisthenics_push"
+  | "calisthenics_pull"
+  | "calisthenics_squat"
+  // optional, always defined for honesty even though currently quarantined
+  // (no verified credentialed primary guide found — see exercises.ts)
+  | "neck_isometric"
+  | "dorsiflexion"
 
 export type CapacityGroup = "required" | "conditional" | "optional"
 
@@ -63,16 +76,50 @@ export const CAPACITIES: Capacity[] = [
   { id: "scapular_cuff", label: "Scapular & cuff", plain: "Shoulder-blade control", anatomy: "shoulders", group: "required" },
   { id: "grip_carry", label: "Grip & carry", plain: "Carrying load", anatomy: "back", group: "required" },
   { id: "trunk_control", label: "Trunk control", plain: "Core anti-rotation/anti-extension", anatomy: "core", group: "required" },
+  { id: "elbow_flexion", label: "Elbow flexion", plain: "Biceps curl pattern", anatomy: "biceps", group: "required" },
+  { id: "elbow_extension", label: "Elbow extension", plain: "Triceps extension pattern", anatomy: "triceps", group: "required" },
+  { id: "lumbar_extension", label: "Lumbar extension", plain: "Controlled low-back extension (good-morning pattern)", anatomy: "back", group: "required" },
   { id: "balance", label: "Balance", plain: "Standing balance work", anatomy: null, group: "conditional" },
   { id: "mobility", label: "Mobility", plain: "Everyday joint range", anatomy: null, group: "conditional" },
+  {
+    id: "floor_transfer",
+    label: "Floor transfer",
+    plain: "Sit-to-stand / getting up off the floor",
+    anatomy: null,
+    group: "conditional",
+  },
   { id: "run_progression", label: "Running progression", plain: "Structured run-building", anatomy: null, group: "optional" },
   { id: "run_hamstring_resilience", label: "Hamstring resilience", plain: "Running-specific hamstring work", anatomy: "hamstrings", group: "optional" },
   { id: "run_strides", label: "Strides", plain: "Short fast efforts, gated on a base", anatomy: null, group: "optional" },
-  { id: "boxing_grip_forearm", label: "Grip & forearm", plain: "Wrist/forearm resilience", anatomy: "biceps", group: "optional" },
+  { id: "boxing_grip_forearm", label: "Grip & forearm", plain: "Wrist/forearm resilience", anatomy: null, group: "optional" },
   { id: "boxing_conditioning", label: "Conditioning intervals", plain: "Short, hard conditioning bouts", anatomy: null, group: "optional" },
   { id: "outdoors_loaded_carry_walk", label: "Loaded carry/walk", plain: "Rucking-style loaded walking", anatomy: null, group: "optional" },
-  { id: "outdoors_trip_prep", label: "Trip preparation", plain: "What to plan and pack, not a muscle", anatomy: null, group: "optional" },
-  { id: "outdoors_landing_awareness", label: "Landing awareness", plain: "Falling/landing safety referral", anatomy: null, group: "optional" },
+  {
+    id: "outdoors_trip_prep",
+    label: "Trip preparation & safety referrals",
+    plain: "What to plan and pack, plus climbing-landing/water-safety referrals — not a muscle",
+    anatomy: null,
+    group: "optional",
+  },
+  { id: "outdoors_stair_intervals", label: "Stair intervals", plain: "Short stepping-pace intervals on stairs/steps", anatomy: null, group: "optional" },
+  { id: "yoga_session", label: "Beginner yoga session", plain: "A guided mobility/balance/breath session", anatomy: null, group: "optional" },
+  { id: "calisthenics_push", label: "Bodyweight push progression", plain: "Push-up progression ladder", anatomy: "chest", group: "optional" },
+  { id: "calisthenics_pull", label: "Bodyweight pull progression", plain: "Pull-up progression ladder", anatomy: "back", group: "optional" },
+  { id: "calisthenics_squat", label: "Bodyweight squat progression", plain: "Pistol-squat progression ladder", anatomy: "quads", group: "optional" },
+  {
+    id: "neck_isometric",
+    label: "Neck isometrics",
+    plain: "Gentle isometric neck strength work",
+    anatomy: null,
+    group: "optional",
+  },
+  {
+    id: "dorsiflexion",
+    label: "Dorsiflexion / tibialis",
+    plain: "Toe-clearance / shin strength work",
+    anatomy: null,
+    group: "optional",
+  },
 ]
 
 export function capacityById(id: CapacityId): Capacity {
@@ -87,13 +134,15 @@ export const REQUIRED_CAPACITIES: CapacityId[] = CAPACITIES.filter((c) => c.grou
  * The optional post-result one-tap emphasis. Each changes at most three
  * slots; the untouched default stays foundation-only and infers nothing.
  */
-export type Emphasis = "general" | "running" | "boxing" | "outdoors"
+export type Emphasis = "general" | "running" | "boxing" | "outdoors" | "yoga" | "calisthenics"
 
 export const EMPHASES: { id: Emphasis; label: string; plain: string }[] = [
   { id: "general", label: "General", plain: "The foundation only. No extra inference." },
   { id: "running", label: "Running", plain: "Adds a structured run progression and running-specific hamstring work." },
   { id: "boxing", label: "Boxing", plain: "Adds optional grip/forearm and conditioning-interval work, explicitly extrapolated from combat-sport training." },
-  { id: "outdoors", label: "Climbing & outdoors", plain: "Adds loaded carry/walk and trip-preparation, with safety referrals only." },
+  { id: "outdoors", label: "Climbing & outdoors", plain: "Adds loaded carry/walk, stair intervals and trip-preparation, with safety referrals only." },
+  { id: "yoga", label: "Yoga", plain: "Adds a beginner guided session plus extra mobility/balance — useful, not a unique mechanism, and not a substitute for the resistance/aerobic dose." },
+  { id: "calisthenics", label: "Calisthenics", plain: "Adds bodyweight progression ladders for push/pull/squat alongside the standard picks — same movement patterns, no new equipment." },
 ]
 
 /** At most this many foundation slots may be added/reordered per emphasis. */

@@ -682,7 +682,15 @@ function FoundationGroup({
           return (
             <li key={slot.exercise.id} className="card ex" style={{ flexDirection: "column", alignItems: "stretch" }}>
               <div className="ex-summary">
-                <span className="ex-name">{slot.exercise.name}</span>
+                <span className="ex-name">
+                  {slot.exercise.name}
+                  {slot.exercise.uncertain && (
+                    <span className="pick-plain" title="An inferred substitute for the tested modality — not itself directly tested.">
+                      {" "}
+                      (inferred substitute)
+                    </span>
+                  )}
+                </span>
                 <span className="pick-plain">{capacity.label}</span>
               </div>
               {guide && (

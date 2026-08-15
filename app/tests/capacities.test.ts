@@ -22,6 +22,9 @@ describe("the required-capacity universal foundation", () => {
       "scapular_cuff",
       "grip_carry",
       "trunk_control",
+      "elbow_flexion",
+      "elbow_extension",
+      "lumbar_extension",
     ]
     for (const capacity of expected) {
       assert.equal(required.has(capacity), true, `required capacity list is missing "${capacity}"`)
@@ -29,11 +32,13 @@ describe("the required-capacity universal foundation", () => {
     assert.equal(REQUIRED_CAPACITIES.length, new Set(REQUIRED_CAPACITIES).size)
   })
 
-  it("keeps balance and mobility as conditional/always-on additions, not required baseline slots", () => {
+  it("keeps balance, mobility and floor_transfer as conditional/always-on additions, not required baseline slots", () => {
     assert.equal(REQUIRED_CAPACITIES.includes("balance"), false)
     assert.equal(REQUIRED_CAPACITIES.includes("mobility"), false)
+    assert.equal(REQUIRED_CAPACITIES.includes("floor_transfer"), false)
     assert.equal(capacityById("balance").group, "conditional")
     assert.equal(capacityById("mobility").group, "conditional")
+    assert.equal(capacityById("floor_transfer").group, "conditional")
   })
 
   it("resolves capacityById for a known id and throws for an unknown one", () => {
@@ -42,8 +47,24 @@ describe("the required-capacity universal foundation", () => {
   })
 
   it("never maps an abstract capacity to a fake anatomy region", () => {
+    const abstractIds: CapacityId[] = [
+      "aerobic_base",
+      "balance",
+      "mobility",
+      "floor_transfer",
+      "run_progression",
+      "run_strides",
+      "boxing_grip_forearm",
+      "boxing_conditioning",
+      "outdoors_loaded_carry_walk",
+      "outdoors_trip_prep",
+      "outdoors_stair_intervals",
+      "yoga_session",
+      "neck_isometric",
+      "dorsiflexion",
+    ]
     for (const c of CAPACITIES) {
-      if (["aerobic_base", "balance", "mobility", "run_progression", "run_strides", "boxing_conditioning", "outdoors_loaded_carry_walk", "outdoors_trip_prep", "outdoors_landing_awareness"].includes(c.id)) {
+      if (abstractIds.includes(c.id)) {
         assert.equal(c.anatomy, null)
       }
     }
@@ -51,10 +72,10 @@ describe("the required-capacity universal foundation", () => {
 })
 
 describe("the optional post-result emphasis", () => {
-  it("offers exactly the four approved chips: general, running, boxing, outdoors", () => {
+  it("offers exactly the six approved chips: general, running, boxing, outdoors, yoga, calisthenics", () => {
     assert.deepEqual(
       EMPHASES.map((e) => e.id).sort(),
-      ["boxing", "general", "outdoors", "running"],
+      ["boxing", "calisthenics", "general", "outdoors", "running", "yoga"],
     )
   })
 

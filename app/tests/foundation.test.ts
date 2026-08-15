@@ -114,4 +114,48 @@ describe("automatic foundation coverage", () => {
     const squat = slots.find((s) => s.capacity === "knee_extension")
     assert.equal(squat?.exercise.tier, "S")
   })
+
+  it("adds floor_transfer only at/above the age-65 overlay, alongside balance, never below it", () => {
+    const younger = buildFoundation("home-gym", ctx({ age: BALANCE_OVERLAY_AGE - 1 }))
+    const older = buildFoundation("home-gym", ctx({ age: BALANCE_OVERLAY_AGE }))
+    assert.equal(younger.some((s) => s.capacity === "floor_transfer"), false)
+    assert.equal(older.some((s) => s.capacity === "floor_transfer"), true)
+  })
+
+  it("covers the new universal arm and lumbar-extension capacities exactly once, for both environments", () => {
+    for (const place of PLACES) {
+      const slots = buildFoundation(place, ctx())
+      for (const capacity of ["elbow_flexion", "elbow_extension", "lumbar_extension"] as const) {
+        assert.equal(slots.filter((s) => s.capacity === capacity).length, 1, `capacity "${capacity}" should appear exactly once`)
+      }
+    }
+  })
+
+  it("flags the home lumbar-extension substitute as uncertain and cites the home ceiling; the commercial pick is not flagged uncertain", () => {
+    const home = buildFoundation("home-gym", ctx()).find((s) => s.capacity === "lumbar_extension")
+    const commercial = buildFoundation("commercial-gym", ctx()).find((s) => s.capacity === "lumbar_extension")
+    assert.equal(home?.exercise.uncertain, true)
+    assert.equal(Boolean(home?.exercise.homeCeilingId), true)
+    assert.equal(Boolean(commercial?.exercise.uncertain), false)
+  })
+
+  it("never double-adds a capacity the emphasis shares with the age-65 overlay (yoga's 'balance')", () => {
+    const slots = buildFoundation("home-gym", ctx({ age: BALANCE_OVERLAY_AGE }), "yoga")
+    assert.equal(slots.filter((s) => s.capacity === "balance").length, 1)
+  })
+
+  it("yoga emphasis under age 65 still adds a balance slot, plus the yoga session, without exceeding the slot cap", () => {
+    const slots = buildFoundation("home-gym", ctx({ age: 30 }), "yoga")
+    assert.equal(slots.some((s) => s.capacity === "balance"), true)
+    assert.equal(slots.some((s) => s.capacity === "yoga_session"), true)
+    assert.equal(slots.filter((s) => s.optional).length <= EMPHASIS_SLOT_CAP, true)
+  })
+
+  it("calisthenics emphasis adds bodyweight push/pull/squat progressions alongside, not instead of, the standard required picks", () => {
+    const slots = buildFoundation("home-gym", ctx(), "calisthenics")
+    assert.equal(slots.some((s) => s.capacity === "horizontal_push" && !s.optional), true, "standard horizontal_push pick still present")
+    assert.equal(slots.some((s) => s.capacity === "calisthenics_push" && s.optional), true)
+    assert.equal(slots.some((s) => s.capacity === "calisthenics_pull" && s.optional), true)
+    assert.equal(slots.some((s) => s.capacity === "calisthenics_squat" && s.optional), true)
+  })
 })

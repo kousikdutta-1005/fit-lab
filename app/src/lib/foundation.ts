@@ -69,7 +69,9 @@ export const BALANCE_OVERLAY_AGE = 65
 export const EMPHASIS_CAPACITIES: Record<Exclude<Emphasis, "general">, CapacityId[]> = {
   running: ["run_progression", "run_hamstring_resilience", "run_strides"],
   boxing: ["boxing_grip_forearm", "boxing_conditioning"],
-  outdoors: ["outdoors_loaded_carry_walk", "outdoors_trip_prep", "outdoors_landing_awareness"],
+  outdoors: ["outdoors_loaded_carry_walk", "outdoors_stair_intervals", "outdoors_trip_prep"],
+  yoga: ["yoga_session", "balance"],
+  calisthenics: ["calisthenics_push", "calisthenics_pull", "calisthenics_squat"],
 }
 
 /**
@@ -81,7 +83,13 @@ export function buildFoundation(place: Place, ctx: SafetyContext, emphasis: Emph
 
   const slots: FoundationSlot[] = []
   const requiredCapacities: CapacityId[] = [...REQUIRED_CAPACITIES]
-  if (ctx.age >= BALANCE_OVERLAY_AGE) requiredCapacities.push("balance")
+  if (ctx.age >= BALANCE_OVERLAY_AGE) {
+    requiredCapacities.push("balance")
+    // Sitting-rising-test mortality signal (Araújo 2025) is validated in an
+    // older/midlife cohort; gated on the same overlay as balance rather than
+    // added to the universal foundation.
+    requiredCapacities.push("floor_transfer")
+  }
   requiredCapacities.push("mobility")
 
   for (const capacity of requiredCapacities) {
@@ -98,6 +106,10 @@ export function buildFoundation(place: Place, ctx: SafetyContext, emphasis: Emph
     let added = 0
     for (const capacity of optionalCapacities) {
       if (added >= EMPHASIS_SLOT_CAP) break
+      // Guard against double-adding a capacity already covered by the
+      // required/conditional loop above (e.g. yoga's "balance" for a user
+      // who already gets it from the age-65+ overlay).
+      if (slots.some((s) => s.capacity === capacity)) continue
       const pool = filterForSafety(
         SHIPPABLE_EXERCISES.filter((e) => e.capacity === capacity && e.environments.includes(place)),
         ctx,
@@ -115,5 +127,5 @@ export function buildFoundation(place: Place, ctx: SafetyContext, emphasis: Emph
 
 /** Every capacity id used anywhere in the foundation, for coverage tests. */
 export function allFoundationCapacities(): CapacityId[] {
-  return [...REQUIRED_CAPACITIES, "balance", "mobility", ...Object.values(EMPHASIS_CAPACITIES).flat()]
+  return [...REQUIRED_CAPACITIES, "balance", "floor_transfer", "mobility", ...Object.values(EMPHASIS_CAPACITIES).flat()]
 }
