@@ -6,6 +6,7 @@ import { bodyPresentation } from "../lib/flat-body"
 import type { BodyProfile } from "../lib/body-profile"
 import femaleProfile from "../data/body-profile-female.json"
 import maleProfile from "../data/body-profile.json"
+import { Card } from "./ui/card"
 
 const Character3D = lazy(() => import("./Character3D"))
 const PROFILES: Record<Build["sex"], BodyProfile> = {
@@ -128,7 +129,8 @@ export function BodyView({
   const fallback = <Flat shape={presentation.flat} height={height} label={label} />
 
   return (
-    <figure ref={ref} style={{ minHeight: height, margin: 0, position: "relative" }}>
+    <Card className="p-0 gap-0" style={{ borderRadius: "1rem" }}>
+      <figure ref={ref} style={{ minHeight: height, margin: 0, position: "relative" }}>
       {show && !failed ? (
         <Body3DErrorBoundary fallback={fallback}>
           <Suspense fallback={fallback}>
@@ -180,7 +182,8 @@ export function BodyView({
           licence
         </a>
       </figcaption>
-    </figure>
+      </figure>
+    </Card>
   )
 }
 

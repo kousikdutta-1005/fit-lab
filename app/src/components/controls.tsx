@@ -1,5 +1,6 @@
 import { useCallback, useId, useRef } from "react"
 import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from "react"
+import { Toggle as TogglePrimitive, ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
 
 /**
  * The control kit.
@@ -330,7 +331,16 @@ export type TileOption<T extends string> = {
   glyph?: GlyphName
 }
 
-/** One choice from a small set, as pressable tiles rather than a radio list. */
+/**
+ * One choice from a small set, as pressable tiles rather than a radio list.
+ *
+ * Built on Radix's ToggleGroup (type="single") rather than a plain
+ * role="group" of buttons: single-selection semantics, arrow-key roving
+ * focus between tiles, and Home/End are handled by the primitive instead of
+ * being reimplemented here. Visual output (the `tile`/`tiles` CSS classes)
+ * is unchanged -- this is the same primitive-swap discipline as
+ * Disclosure/Callout in ui.tsx.
+ */
 export function Tiles<T extends string>({
   label,
   options,
@@ -349,30 +359,50 @@ export function Tiles<T extends string>({
   return (
     <div className="field">
       <span className="field-label">{label}</span>
-      <div role="group" aria-label={label} className="tiles" style={{ "--cols": columns } as CSSProperties}>
+      <ToggleGroupPrimitive.Root
+        type="single"
+        aria-label={label}
+        className="tiles"
+        style={{ "--cols": columns } as CSSProperties}
+        value={value ?? ""}
+        onValueChange={(next) => {
+          // Radix reports "" when the pressed tile is toggled back off; every
+          // Tiles group here is single-choice-required, so that is ignored
+          // rather than allowed to clear the selection.
+          if (next) onChange(next as T)
+        }}
+      >
         {options.map((o) => (
-          <button
+          <ToggleGroupPrimitive.Item
             key={o.id}
-            type="button"
+            value={o.id}
             className={compact ? "tile tile-compact" : "tile"}
-            aria-pressed={value === o.id}
-            onClick={() => onChange(o.id)}
           >
             {o.glyph && <Glyph name={o.glyph} size={compact ? 18 : 22} />}
             <span className="tile-text">
               <span className="tile-label">{o.label}</span>
               {o.note && <span className="tile-note">{o.note}</span>}
             </span>
-          </button>
+          </ToggleGroupPrimitive.Item>
         ))}
-      </div>
+      </ToggleGroupPrimitive.Root>
     </div>
   )
 }
 
 /* ------------------------------------------------------------------- cards */
 
-/** A tick-anything-that-applies card. Pressed means yes, and nothing else. */
+/**
+ * A tick-anything-that-applies card. Pressed means yes, and nothing else.
+ *
+ * Built on Radix's Toggle (a single controlled on/off button primitive)
+ * instead of a plain button with a hand-set aria-pressed -- same rendered
+ * attributes (`aria-pressed`, plus `data-state`), same CSS classes, no
+ * visual change. Each Safety-screen caution/condition is its own
+ * independent boolean rather than one shared exclusive group, which is
+ * exactly what a standalone Toggle models (a ToggleGroup would imply a
+ * single shared selection across all of them, which is not this data).
+ */
 export function TapCard({
   on,
   onToggle,
@@ -389,7 +419,11 @@ export function TapCard({
   tone?: "warn" | "clear"
 }) {
   return (
-    <button type="button" className={`tapcard tapcard-${tone}`} aria-pressed={on} onClick={onToggle}>
+    <TogglePrimitive.Root
+      className={`tapcard tapcard-${tone}`}
+      pressed={on}
+      onPressedChange={onToggle}
+    >
       <span className="tapbox" aria-hidden="true">
         {on ? <Glyph name="check" size={15} /> : glyph ? <Glyph name={glyph} size={16} /> : null}
       </span>
@@ -397,7 +431,7 @@ export function TapCard({
         <span className="tapcard-title">{title}</span>
         {detail && <span className="tapcard-detail">{detail}</span>}
       </span>
-    </button>
+    </TogglePrimitive.Root>
   )
 }
 

@@ -29,9 +29,11 @@
 
     --ink: #15181d;
     --ink-muted: #52606b;
-    --faint: #7c8794;
+    /* WCAG AA: 4.66:1 against --void at small text sizes (was 3.38:1). */
+    --faint: #66707c;
 
-    --cyan: #0e8f84;
+    /* WCAG AA: 4.69:1 against --void at small text sizes (was 3.68:1). */
+    --cyan: #0c7c73;
     --violet: #6a5cd6;
     --amber: #b8560d;
     --rose: #c22a53;
@@ -51,7 +53,8 @@
 
     --ink: #eef4f6;
     --ink-muted: #8b9aa8;
-    --faint: #5d6b78;
+    /* WCAG AA: 4.76:1 against --void at small text sizes (was 3.69:1). */
+    --faint: #6d7d8c;
 
     --cyan: #4be3d0;
     --violet: #8a7bff;
@@ -499,6 +502,13 @@
     color: var(--ink);
   }
 
+  /* The pressed teal tint lightens the effective background just enough
+     that --faint (tuned for the flat --void bg) drops under 4.5:1 here —
+     use --ink-muted for the label on a pressed chip instead. */
+  .chip[aria-pressed="true"] .chip-label {
+    color: var(--ink-muted);
+  }
+
   .chip-text {
     display: block;
     text-align: left;
@@ -670,7 +680,7 @@
     border-color: var(--edge-bright);
   }
 
-  .tile[aria-pressed="true"] {
+  .tile[data-state="on"] {
     border-color: var(--cyan);
     background: rgba(75, 227, 208, 0.1);
   }
@@ -855,6 +865,17 @@
   }
 
   /* ----------------------------------------------------------- disclosures */
+
+  /* Every outbound technique-guide/source link (ExternalLink in ui.tsx) is a
+     standalone tap target inside its own paragraph, so it gets real vertical
+     padding rather than relying on its text line-height — a 0.86rem line is
+     ~22px tall on its own, well under the app's 44px tap-target floor. */
+  .ext-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0.5rem 0;
+  }
 
   .disclosure {
     overflow: hidden;

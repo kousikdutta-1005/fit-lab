@@ -72,9 +72,14 @@ function BandChart({
   const data = [{ name: "v", spacer: low - min, band: Math.max(high - low, span * 0.015) }]
 
   return (
-    <div style={{ position: "absolute", inset: 0 }}>
+    <div style={{ position: "absolute", inset: 0 }} aria-hidden="true">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart layout="vertical" data={data} margin={{ top: 9, right: 0, bottom: 9, left: 0 }}>
+        <BarChart
+          layout="vertical"
+          data={data}
+          margin={{ top: 9, right: 0, bottom: 9, left: 0 }}
+          accessibilityLayer={false}
+        >
           <XAxis type="number" domain={[0, span]} hide />
           <YAxis type="category" dataKey="name" hide />
           <Bar dataKey="spacer" stackId="band" fill="transparent" barSize={5} isAnimationActive={false} />
@@ -202,12 +207,13 @@ export function Timeline({ wanted, honest }: { wanted: number; honest: number })
               {row.weeks} weeks
             </span>
           </div>
-          <div className="timeline-rail">
+          <div className="timeline-rail" aria-hidden="true">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
                 data={[{ name: row.label, weeks: row.weeks }]}
                 margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
+                accessibilityLayer={false}
               >
                 <XAxis type="number" domain={[0, max]} hide />
                 <YAxis type="category" dataKey="name" hide />
@@ -246,8 +252,19 @@ export function VerdictCard({
   children?: ReactNode
 }) {
   const color = tone === "stop" ? "var(--rose)" : tone === "warn" ? "var(--amber)" : "var(--lime)"
+  // A stop/caution verdict must be announced the moment it appears — it can
+  // follow a stage change with no user gesture a screen reader would treat
+  // as "new content", so it needs an explicit live region rather than
+  // relying on focus order alone. A clear/good verdict is not urgent and
+  // stays a plain region so it does not interrupt.
+  const live = tone === "stop" || tone === "warn"
   return (
-    <div className="card verdict" style={{ borderLeft: `3px solid ${color}` }}>
+    <div
+      className="card verdict"
+      style={{ borderLeft: `3px solid ${color}` }}
+      role={live ? "alert" : undefined}
+      aria-live={live ? "assertive" : undefined}
+    >
       <p className="verdict-label mono" style={{ color }}>
         {label}
       </p>

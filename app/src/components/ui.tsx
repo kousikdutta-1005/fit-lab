@@ -38,8 +38,18 @@ export function Callout({
   children: ReactNode
 }) {
   const color = tone === "stop" ? "var(--rose)" : tone === "warn" ? "var(--amber)" : "var(--cyan)"
+  // Same rule as VerdictCard: a warn/stop callout (the Safety-screen caution
+  // banner, condition-gate notices) must be announced as soon as it mounts,
+  // since it can appear after a stage change with no user gesture screen
+  // readers would otherwise treat as new content.
+  const live = tone === "stop" || tone === "warn"
   return (
-    <Card className="card" style={{ padding: "0.95rem 1.05rem", borderLeft: `3px solid ${color}` }}>
+    <Card
+      className="card"
+      style={{ padding: "0.95rem 1.05rem", borderLeft: `3px solid ${color}` }}
+      role={live ? "alert" : undefined}
+      aria-live={live ? "assertive" : undefined}
+    >
       <p style={{ margin: 0, fontWeight: 600, color }}>{title}</p>
       <div style={{ marginTop: 6, color: "var(--ink-muted)", lineHeight: 1.6, fontSize: "0.94rem" }}>
         {children}
