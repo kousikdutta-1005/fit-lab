@@ -94,15 +94,9 @@ function setsForGoal(goal: GoalKind, compound: boolean, trainingAge: TrainingAge
   if (goal === "stay-healthy") return SETS_PER_EXERCISE_FLOOR
   if (goal === "lose-fat") return compound ? 3 : SETS_PER_EXERCISE_FLOOR
   if (goal === "get-stronger") return compound ? 3 : SETS_PER_EXERCISE_FLOOR
-  // build-muscle: training-age-scaled, per ACSM 2026 volume guards and the
-  // Schoenfeld 2017 dose-response meta-analysis (~+0.37% hypertrophy per set,
-  // trending up toward ~10 sets/week per muscle before plateauing). Combined
-  // with sessionsPerWeekForGoal below, this is tuned so a single exercise's
-  // weekly volume (sets x sessions/week) lands in a real hypertrophy working
-  // range rather than the bare ACSM maintenance floor: ~6-8 sets/week for a
-  // true beginner, ~10-14 for 1-3y trained, ~14-18 for 3+y trained -- all
-  // still under WEEKLY_SETS_PER_MUSCLE_CAP so overlapping-capacity regions
-  // (e.g. back) still get deduplicated rather than stacked further.
+  // Build-muscle stays at a normal 3-4 working sets per exercise. Split
+  // scheduling gives each exercise two weekly exposures, producing 6-8
+  // direct sets before overlapping capacities are deduplicated by region.
   const age = trainingAge ?? "none"
   if (age === "none" || age === "under-1") return compound ? 4 : 3
   if (age === "1-3") return 4
@@ -165,7 +159,11 @@ function resistanceDose(
   const compound = COMPOUND_CAPACITIES.has(capacity)
   const [repsLow, repsHigh] = repsForGoal(goal, compound)
   const [restLow, restHigh] = restForGoal(goal, compound)
-  const sessionsPerWeek = sessionsPerWeekForGoal(goal, trainingAge)
+  const trainingDaysPerWeek = sessionsPerWeekForGoal(goal, trainingAge)
+  // Training days and per-exercise frequency are different quantities. A
+  // 3-4 day split still trains each exercise twice; multiplying its sets by
+  // every training day is what previously produced 6-8 sets in one workout.
+  const sessionsPerWeek = goal === "build-muscle" ? 2 : trainingDaysPerWeek
   let sets = setsForGoal(goal, compound, trainingAge)
   let rir = RIR_DEFAULT
   let note: string | undefined
@@ -295,10 +293,15 @@ export function applyWeeklyVolumeCap(
   return { doses: out, regionNotes }
 }
 
-export function weeklySummary(slots: FoundationSlot[], doses: Dose[]): WeeklySummary {
+export function weeklySummary(
+  slots: FoundationSlot[],
+  doses: Dose[],
+  plannedStrengthSessionsPerWeek?: number,
+): WeeklySummary {
   const resistanceSlots = slots.filter((_, i) => doses[i].kind === "resistance")
   const strengthSessionsPerWeek = resistanceSlots.length
-    ? Math.max(...doses.filter((d): d is ResistanceDose => d.kind === "resistance").map((d) => d.sessionsPerWeek))
+    ? plannedStrengthSessionsPerWeek ??
+      Math.max(...doses.filter((d): d is ResistanceDose => d.kind === "resistance").map((d) => d.sessionsPerWeek))
     : 0
   const totalWeeklySets = doses
     .filter((d): d is ResistanceDose => d.kind === "resistance")
