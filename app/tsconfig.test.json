@@ -9,6 +9,7 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "allowImportingTsExtensions": true,
+    "allowJs": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -18,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["tests"]
+  "include": ["tests", "scripts"]
 }

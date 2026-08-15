@@ -166,11 +166,17 @@ export function BodyView({
         className="mono"
         style={{ position: "absolute", right: 8, top: 5, zIndex: 2, fontSize: "0.56rem", opacity: 0.58 }}
       >
-        <a href={credit.source} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+        <a href={credit.source} target="_blank" rel="noreferrer noopener" style={{ color: "inherit" }}>
           {credit.label}
         </a>
         {" · "}
-        <a href={credit.licence} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>
+        <a
+          href={credit.licence}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={`${credit.label} licence`}
+          style={{ color: "inherit" }}
+        >
           licence
         </a>
       </figcaption>

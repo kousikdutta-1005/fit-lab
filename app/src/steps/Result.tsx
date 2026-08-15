@@ -1,4 +1,6 @@
-import { Callout, Disclosure, Kicker } from "../components/ui"
+import { useState } from "react"
+import { Callout, Disclosure, ExternalLink, Kicker } from "../components/ui"
+import { SourcesPanel } from "../components/SourcesPanel"
 import { BodyView } from "../components/BodyView"
 import { MuscleView } from "../components/MuscleView"
 import { Glyph, Tiles } from "../components/controls"
@@ -25,7 +27,15 @@ import { assess } from "../lib/goals"
 import type { HealthAnswers } from "../lib/screening"
 import { notesDefaultOpen, screen } from "../lib/screening"
 import type { Place } from "../data/exercises"
-import { fullBodyFoundation, gapFor } from "../data/exercises"
+import { capacityById } from "../data/capacities"
+import type { Emphasis } from "../data/capacities"
+import { EMPHASES } from "../data/capacities"
+import type { FoundationSlot, SafetyContext } from "../lib/foundation"
+import { buildFoundation } from "../lib/foundation"
+import type { Dose } from "../lib/dose"
+import { applyWeeklyVolumeCap, doseForSlot, weeklySummary } from "../lib/dose"
+import { HOME_CEILINGS, HOME_KIT } from "../data/kit"
+import { GUIDES, SOURCES, guideById } from "../data/evidence"
 
 /**
  * The read.
@@ -81,6 +91,7 @@ export function Result({
   onRestart: () => void
 }) {
   const scr = screen(profile, health)
+  const [emphasis, setEmphasis] = useState<Emphasis>("general")
 
   if (scr.kind === "stop") {
     return (
@@ -121,9 +132,29 @@ export function Result({
   const index = lean === null ? null : ffmi(lean, profile.heightCm)
   const ceiling = ffmiCeiling(profile.sex)
   const verdict = assess(profile, intent, bfMid ?? 25)
-  const gap = gapFor(place)
-  const foundation = fullBodyFoundation(place)
-  const fullBody = foundation.map(({ muscle }) => muscle.id)
+
+  const ctx: SafetyContext = {
+    screenKind: scr.kind,
+    conditions: health.conditions,
+    jointProblem: health.jointProblem,
+    pregnant: health.pregnant,
+    age: profile.age,
+  }
+  const slots: FoundationSlot[] = buildFoundation(place, ctx, emphasis)
+  const rawDoses: Dose[] = slots.map((slot) =>
+    doseForSlot(slot, intent.kind, intent.trainingAge, { screenKind: scr.kind, age: profile.age }),
+  )
+  const { doses, regionNotes } = applyWeeklyVolumeCap(slots, rawDoses)
+  const summary = weeklySummary(slots, doses)
+  const fullBody = Array.from(
+    new Set(
+      slots
+        .map((s) => capacityById(s.capacity).anatomy)
+        .filter((a): a is NonNullable<typeof a> => a !== null),
+    ),
+  )
+  const requiredSlots = slots.filter((s) => !s.optional)
+  const optionalSlots = slots.filter((s) => s.optional)
 
   return (
     <div className="read">
@@ -327,57 +358,117 @@ export function Result({
       <section className="read-section">
         <div className="section-head">
           <Glyph name="dumbbell" size={16} />
-          <h2 className="section-title">Current full-body foundation</h2>
+          <h2 className="section-title">Your weekly movement foundation</h2>
         </div>
 
         <p className="read-note">
-          The app chooses complete movement coverage. Your training environment only selects the available
-          variants. This is the current structural catalogue; the next evidence layer will replace and verify
-          the final exercise set.
+          The app chose complete movement coverage automatically — you never pick a muscle. Your environment
+          only changes which variant of each pattern is shown. Every card below has a verified technique
+          guide and a starting dose; the full evidence behind each is in{" "}
+          <a href="#sources-and-methods">Sources &amp; methods</a>.
         </p>
 
         <div className="card evidence">
           <MuscleView active={fullBody} height={300} />
-          <p className="scene-strip mono">Lit in red: complete full-body coverage</p>
+          <p className="scene-strip mono">Lit: the concrete movement patterns in this week's foundation</p>
+        </div>
+
+        <div className="card" style={{ padding: "0.95rem 1.05rem" }}>
+          <h3 className="pick-title" style={{ marginTop: 0 }}>
+            Weekly summary
+          </h3>
+          <div className="chipstrip">
+            <ValueChip label="Strength sessions/week" value={String(summary.strengthSessionsPerWeek)} />
+            <ValueChip label="Weekly resistance sets" value={String(summary.totalWeeklySets)} />
+            {summary.aerobicMinutesPerWeek && (
+              <ValueChip
+                label="Aerobic minutes/week"
+                value={`${summary.aerobicMinutesPerWeek[0]}–${summary.aerobicMinutesPerWeek[1]}`}
+              />
+            )}
+          </div>
+          <p className="why-body" style={{ marginBottom: 0 }}>
+            {summary.notes.join(" ")}
+          </p>
+          {regionNotes.length > 0 && (
+            <p className="why-body" style={{ marginBottom: 0 }}>
+              {regionNotes.join(" ")}
+            </p>
+          )}
+        </div>
+
+        <div className="section-head" style={{ marginTop: "1.2rem" }}>
+          <h3 className="pick-title" style={{ margin: 0 }}>
+            Optional emphasis
+          </h3>
+        </div>
+        <p className="read-note">
+          One tap only. The default below is the full foundation with no extra inference. Each emphasis adds
+          at most a few clearly optional, explicitly-scoped extra slots — it never replaces the foundation.
+        </p>
+        <div className="chipstrip" role="group" aria-label="Optional emphasis">
+          {EMPHASES.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              className={`btn tap ${emphasis === e.id ? "btn-active" : "btn-quiet"}`}
+              aria-pressed={emphasis === e.id}
+              onClick={() => setEmphasis(e.id)}
+              title={e.plain}
+            >
+              {e.label}
+            </button>
+          ))}
         </div>
 
         <div className="picks">
-          {foundation.map(({ muscle, exercises }) => {
-            return (
-              <div key={muscle.id} className="pick">
-                <div className="pick-head">
-                  <h3 className="pick-title">{muscle.label}</h3>
-                  <span className="pick-plain">{muscle.plain}</span>
-                </div>
-                {exercises.length === 0 ? (
-                  <p className="read-note">
-                    The current catalogue has no variant for this environment. The evidence layer must close
-                    that gap before the catalogue is final.
-                  </p>
-                ) : (
-                  <ol className="exlist">
-                    {exercises.map((e, i) => (
-                      <li key={e.id} className="card ex">
-                        <div className="ex-summary">
-                          <span className="ex-index tnum" aria-hidden="true">
-                            {i + 1}
-                          </span>
-                          <span className="ex-name">{e.name}</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </div>
-            )
-          })}
+          <FoundationGroup title="Foundation" slots={requiredSlots} doses={doses} slotAll={slots} />
+          {optionalSlots.length > 0 && (
+            <FoundationGroup title="Optional emphasis additions" slots={optionalSlots} doses={doses} slotAll={slots} />
+          )}
         </div>
 
-        {gap && (
+        {place === "home-gym" && (
           <div className="read-section">
-            <Callout tone="note" title="Home-gym definition">
-              <p style={{ margin: 0 }}>{gap}</p>
-            </Callout>
+            <h3 className="pick-title">What to buy, in order</h3>
+            <p className="read-note">
+              Generic and vendor-free, in the order that unlocks the most of the foundation above per rupee
+              spent.
+            </p>
+            <ol className="exlist">
+              {[...HOME_KIT]
+                .sort((a, b) => a.priority - b.priority)
+                .map((k) => (
+                  <li key={k.id} className="card ex" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                    <div className="ex-summary">
+                      <span className="ex-index tnum" aria-hidden="true">
+                        {k.priority}
+                      </span>
+                      <span className="ex-name">{k.label}</span>
+                    </div>
+                    <p className="why-body">
+                      <strong>Unlocks:</strong> {k.unlocks}
+                    </p>
+                    <p className="why-body">{k.guidance}</p>
+                    {k.safety.length > 0 && (
+                      <ul className="why-body" style={{ margin: 0, paddingLeft: "1.2rem" }}>
+                        {k.safety.map((s) => (
+                          <li key={s}>{s}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+            </ol>
+            <Disclosure title="What a home gym cannot fully match" hint="Real ceilings, not papered over">
+              <ul className="why-body" style={{ margin: 0, paddingLeft: "1.2rem" }}>
+                {HOME_CEILINGS.map((c) => (
+                  <li key={c.id} style={{ marginBottom: "0.6rem" }}>
+                    <strong>{c.label}.</strong> {c.reason}
+                  </li>
+                ))}
+              </ul>
+            </Disclosure>
           </div>
         )}
       </section>
@@ -416,14 +507,11 @@ export function Result({
             on this page rests on them.
           </p>
           <p className="why-body">
-            The exercise list below is the temporary catalogue carried forward for this structural layer.
-            It is not the final evidence-reviewed prescription.
-          </p>
-          <p className="why-body">
-            Two things decide most of whether a year of training changes anything: how hard your sets are, and
-            how often you train. Sets that stop five or more reps short of failure produce very little growth,
-            and roughly ten hard sets per muscle per week is where growth becomes reliable. You were not asked
-            to predict either, because a warning built on a prediction is a warning about nobody.
+            Every exercise below is chosen for the movement pattern it covers, not a muscle group, and carries
+            a verified technique guide. Sets default to 2–3 reps in reserve — training to failure is not
+            required for growth or strength. The weekly-sets ceiling and floor per exercise come from the
+            2026 ACSM position stand, and overlapping work across exercises is capped rather than left to
+            stack silently. Full detail is in Sources &amp; methods below.
           </p>
         </Disclosure>
 
@@ -435,10 +523,27 @@ export function Result({
             website.
           </p>
           <p className="why-body">
+            Every dose shown is a safe starting range, not a guaranteed individual optimum. Adjust within the
+            given range as your own recovery and technique tell you to.
+          </p>
+          <p className="why-body">
             Nothing on this page was sent anywhere. It was worked out on your own device and it disappears
             when you close the tab.
           </p>
         </Disclosure>
+      </section>
+
+      <section className="read-section">
+        <div className="section-head">
+          <Glyph name="target" size={16} />
+          <h2 className="section-title">Sources &amp; methods</h2>
+        </div>
+        <p className="read-note">
+          How fit-lab knows this. Every formula, threshold, safety rule, exercise pick and dose above resolves
+          to a source here — guideline, trial, meta-analysis, observational association, biomechanical
+          inference, or an explicitly labelled editorial/product judgement.
+        </p>
+        <SourcesPanel sources={SOURCES} guides={GUIDES} />
       </section>
 
       <div className="read-actions">
@@ -450,5 +555,85 @@ export function Result({
         </button>
       </div>
     </div>
+  )
+}
+
+function FoundationGroup({
+  title,
+  slots,
+  doses,
+  slotAll,
+}: {
+  title: string
+  slots: FoundationSlot[]
+  doses: Dose[]
+  slotAll: FoundationSlot[]
+}) {
+  if (slots.length === 0) return null
+  return (
+    <div className="pick">
+      <div className="pick-head">
+        <h3 className="pick-title">{title}</h3>
+      </div>
+      <ol className="exlist">
+        {slots.map((slot) => {
+          const index = slotAll.indexOf(slot)
+          const dose = doses[index]
+          const capacity = capacityById(slot.capacity)
+          const guide = guideById(slot.exercise.guideId)
+          return (
+            <li key={slot.exercise.id} className="card ex" style={{ flexDirection: "column", alignItems: "stretch" }}>
+              <div className="ex-summary">
+                <span className="ex-name">{slot.exercise.name}</span>
+                <span className="pick-plain">{capacity.label}</span>
+              </div>
+              {guide && (
+                <p className="why-body" style={{ margin: 0 }}>
+                  <ExternalLink href={guide.url} label={`${guide.title} — ${guide.provider}, opens in a new tab`}>
+                    {guide.role === "referral" ? "Official referral" : "Technique guide"}: {guide.title} ({guide.provider})
+                  </ExternalLink>
+                </p>
+              )}
+              <DoseView dose={dose} />
+              <p className="why-body" style={{ margin: 0 }}>
+                {slot.exercise.why}
+              </p>
+              {slot.exercise.homeCeilingId && (
+                <p className="source-limitation">
+                  {HOME_CEILINGS.find((c) => c.id === slot.exercise.homeCeilingId)?.reason}
+                </p>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
+}
+
+function DoseView({ dose }: { dose: Dose }) {
+  if (dose.kind === "referral") {
+    return <p className="ex-name">Referral only — not a dosed exercise.</p>
+  }
+  if (dose.kind === "aerobic") {
+    return (
+      <p className="ex-name mono">
+        {dose.minutesPerWeek[0]}–{dose.minutesPerWeek[1]} min/week · {dose.sessionsPerWeek}x/week
+      </p>
+    )
+  }
+  if (dose.kind === "interval") {
+    return (
+      <p className="ex-name mono">
+        {dose.rounds[0]}–{dose.rounds[1]} rounds · {dose.workSeconds[0]}–{dose.workSeconds[1]}s work ·{" "}
+        {dose.sessionsPerWeek}x/week
+      </p>
+    )
+  }
+  return (
+    <p className="ex-name mono">
+      {dose.sets} sets × {dose.repsLow}–{dose.repsHigh} reps · {dose.rir[0]}–{dose.rir[1]} RIR · rest{" "}
+      {dose.restSeconds[0]}–{dose.restSeconds[1]}s · {dose.sessionsPerWeek}x/week
+    </p>
   )
 }

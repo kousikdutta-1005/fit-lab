@@ -4,6 +4,28 @@ export function Kicker({ children }: { children: ReactNode }) {
   return <p className="kicker">{children}</p>
 }
 
+/**
+ * Every outbound technique-guide/source link goes through this so the
+ * safe-external-link attributes and the accessible name are never missed on
+ * a one-off basis. `label` should name the destination and provider, e.g.
+ * "Bird Dog — ACE, opens in a new tab".
+ */
+export function ExternalLink({
+  href,
+  label,
+  children,
+}: {
+  href: string
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer noopener" aria-label={label} className="ext-link">
+      {children}
+    </a>
+  )
+}
+
 export function Callout({
   tone = "note",
   title,
