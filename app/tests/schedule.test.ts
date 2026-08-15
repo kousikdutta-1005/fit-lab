@@ -8,6 +8,7 @@ import type { FoundationSlot, SafetyContext } from "../src/lib/foundation.ts"
 import type { GoalKind, TrainingAge } from "../src/lib/goals.ts"
 import type { Place } from "../src/data/exercises.ts"
 import { sourceById } from "../src/data/evidence.ts"
+import { capacityById } from "../src/data/capacities.ts"
 import {
   SCHEDULE_SOURCE_IDS,
   buildWeeklySchedule,
@@ -37,7 +38,7 @@ function scheduleFor(
   const { doses } = applyWeeklyVolumeCap(slots, rawDoses)
   const summary = weeklySummary(slots, doses)
   const bounds = weeklyDayBounds(summary)
-  const schedule = buildWeeklySchedule(slots, doses, summary, chosenDays ?? bounds.optimal)
+  const schedule = buildWeeklySchedule(slots, doses, summary, chosenDays ?? bounds.optimal, goal)
   return { slots, doses, summary, bounds, schedule }
 }
 
@@ -145,7 +146,7 @@ describe("buildWeeklySchedule", () => {
     for (const place of PLACES) {
       for (const goal of GOALS) {
         const { bounds, slots, doses, summary } = scheduleFor(place, goal, "3-plus", CLEAR, CLEAR_DOSE)
-        const schedule = buildWeeklySchedule(slots, doses, summary, bounds.max)
+        const schedule = buildWeeklySchedule(slots, doses, summary, bounds.max, goal)
         const restDays = schedule.days.filter((d) => d.kind === "rest")
         assert.equal(restDays.length >= 1, true)
       }
@@ -185,7 +186,7 @@ describe("buildWeeklySchedule", () => {
 
   it("never assigns a resistance exercise to more distinct days than its own prescribed sessionsPerWeek", () => {
     const { slots, doses, summary, bounds } = scheduleFor("home-gym", "build-muscle", "3-plus", CLEAR, CLEAR_DOSE)
-    const schedule = buildWeeklySchedule(slots, doses, summary, bounds.max)
+    const schedule = buildWeeklySchedule(slots, doses, summary, bounds.max, "build-muscle")
     slots.forEach((slot, i) => {
       const dose = doses[i]
       if (dose.kind !== "resistance") return
@@ -196,9 +197,10 @@ describe("buildWeeklySchedule", () => {
   })
 
   it("spaces a lower-frequency exercise (fewer sessions/week than the strength floor) evenly rather than clustering it", () => {
-    // build-muscle + 3-plus + a home ceiling scenario is likely to include a capped-frequency,
-    // high-DOMS exercise; find any resistance dose whose sessionsPerWeek is below the strength floor.
-    const { slots, doses, schedule } = scheduleFor("home-gym", "build-muscle", "3-plus", CLEAR, CLEAR_DOSE)
+    // Get-stronger stays full-body at 3 sessions, while the high-DOMS hamstring
+    // exercise remains capped at 2; that preserves the spacing behavior this
+    // assertion covers without conflating it with split-mode consolidation.
+    const { slots, doses, schedule } = scheduleFor("home-gym", "get-stronger", "3-plus", CLEAR, CLEAR_DOSE)
     const strengthDayNumbers = schedule.days.filter((d) => d.kind === "strength").map((d) => d.dayNumber)
     slots.forEach((slot, i) => {
       const dose = doses[i]
@@ -221,8 +223,8 @@ describe("buildWeeklySchedule", () => {
 
   it("clamps an out-of-range chosenDaysInput rather than throwing or ignoring it", () => {
     const { slots, doses, summary, bounds } = scheduleFor("home-gym", "stay-healthy", "none", CLEAR, CLEAR_DOSE)
-    const tooFew = buildWeeklySchedule(slots, doses, summary, 0)
-    const tooMany = buildWeeklySchedule(slots, doses, summary, 30)
+    const tooFew = buildWeeklySchedule(slots, doses, summary, 0, "stay-healthy")
+    const tooMany = buildWeeklySchedule(slots, doses, summary, 30, "stay-healthy")
     assert.equal(tooFew.chosenDays, bounds.min)
     assert.equal(tooMany.chosenDays, bounds.max)
   })
@@ -242,8 +244,8 @@ describe("buildWeeklySchedule", () => {
   it("responds to a higher chosen day count by adding aerobic-only days rather than duplicating strength days", () => {
     const { slots, doses, summary, bounds } = scheduleFor("home-gym", "lose-fat", "none", CLEAR, CLEAR_DOSE)
     if (bounds.max <= bounds.min) return
-    const atMin = buildWeeklySchedule(slots, doses, summary, bounds.min)
-    const atMax = buildWeeklySchedule(slots, doses, summary, bounds.max)
+    const atMin = buildWeeklySchedule(slots, doses, summary, bounds.min, "lose-fat")
+    const atMax = buildWeeklySchedule(slots, doses, summary, bounds.max, "lose-fat")
     const strengthAtMin = atMin.days.filter((d) => d.kind === "strength").length
     const strengthAtMax = atMax.days.filter((d) => d.kind === "strength").length
     assert.equal(strengthAtMin, strengthAtMax)
@@ -261,5 +263,124 @@ describe("buildWeeklySchedule", () => {
   it("carries its source IDs through onto every built schedule", () => {
     const { schedule } = scheduleFor("home-gym", "build-muscle", "3-plus", CLEAR, CLEAR_DOSE)
     assert.deepEqual(schedule.sourceIds, SCHEDULE_SOURCE_IDS)
+  })
+
+  it("keeps beginners on full body, uses Upper/Lower/Full body at 3 sessions, and repeats Upper/Lower at 4", () => {
+    const beginner = scheduleFor("home-gym", "build-muscle", "under-1", CLEAR, CLEAR_DOSE)
+    const intermediate = scheduleFor("home-gym", "build-muscle", "1-3", CLEAR, CLEAR_DOSE)
+    const advanced = scheduleFor("home-gym", "build-muscle", "3-plus", CLEAR, CLEAR_DOSE)
+
+    assert.equal(beginner.schedule.split, "full-body")
+    assert.equal(intermediate.schedule.split, "upper-lower")
+    assert.deepEqual(
+      intermediate.schedule.days.filter((day) => day.kind === "strength").map((day) => day.label),
+      ["Upper", "Lower", "Full body"],
+    )
+    assert.equal(advanced.schedule.split, "upper-lower")
+    assert.deepEqual(
+      advanced.schedule.days.filter((day) => day.kind === "strength").map((day) => day.label),
+      ["Upper A", "Lower A", "Upper B", "Lower B"],
+    )
+  })
+
+  it("keeps one foundation slot per resistance capacity and schedules each on exactly two split days", () => {
+    for (const place of PLACES) {
+      for (const trainingAge of ["1-3", "3-plus"] as TrainingAge[]) {
+        const { slots, doses, schedule } = scheduleFor(place, "build-muscle", trainingAge, CLEAR, CLEAR_DOSE)
+        const expected = slots
+          .map((slot, index) => ({ slot, index, dose: doses[index] }))
+          .filter(({ dose }) => dose.kind === "resistance")
+        const scheduled = schedule.days.flatMap((day) => day.items).filter((item) => item.kind === "resistance")
+        assert.equal(scheduled.length, expected.length * 2)
+        for (const { slot, index } of expected) {
+          assert.equal(
+            scheduled.filter((item) => item.slotIndex === index).length,
+            2,
+            `${place}/${trainingAge}/${slot.capacity} should be assigned to exactly two split days`,
+          )
+        }
+      }
+    }
+  })
+
+  it("preserves every resistance exercise's exact weekly set math after splitting", () => {
+    for (const place of PLACES) {
+      for (const trainingAge of ["1-3", "3-plus"] as TrainingAge[]) {
+        const { slots, doses, summary, schedule } = scheduleFor(place, "build-muscle", trainingAge, CLEAR, CLEAR_DOSE)
+        let scheduledWeeklySets = 0
+        slots.forEach((slot, index) => {
+          const dose = doses[index]
+          if (dose.kind !== "resistance") return
+          const items = schedule.days.flatMap((day) => day.items).filter((item) => item.slotIndex === index)
+          const scheduledSets = items.reduce((sum, item) => sum + (item.scheduledSets ?? 0), 0)
+          assert.equal(
+            scheduledSets,
+            dose.sets * dose.sessionsPerWeek,
+            `${place}/${trainingAge}/${slot.capacity} weekly volume changed`,
+          )
+          scheduledWeeklySets += scheduledSets
+        })
+
+        it("hits every rendered anatomy region on at least two distinct days for every build-muscle training age", () => {
+          for (const place of PLACES) {
+            for (const trainingAge of ["none", "under-1", "1-3", "3-plus"] as TrainingAge[]) {
+              const { slots, doses, schedule } = scheduleFor(place, "build-muscle", trainingAge, CLEAR, CLEAR_DOSE)
+              const daysByRegion = new Map<string, Set<number>>()
+              schedule.days.forEach((day) => {
+                day.items.forEach((item) => {
+                  if (doses[item.slotIndex].kind !== "resistance") return
+                  const anatomy = capacityById(slots[item.slotIndex].capacity).anatomy
+                  if (!anatomy) return
+                  const days = daysByRegion.get(anatomy) ?? new Set<number>()
+                  days.add(day.dayNumber)
+                  daysByRegion.set(anatomy, days)
+                })
+              })
+              for (const [region, days] of daysByRegion) {
+                assert.equal(days.size >= 2, true, `${place}/${trainingAge}/${region} only appears on ${days.size} day(s)`)
+              }
+            }
+          }
+        })
+        assert.equal(scheduledWeeklySets, summary.totalWeeklySets)
+      }
+    }
+  })
+
+  it("schedules every non-referral optional activity, including secondary aerobic and interval work", () => {
+    for (const emphasis of ["running", "boxing", "outdoors"] as const) {
+      const slots = buildFoundation("home-gym", CLEAR, emphasis)
+      const rawDoses = slots.map((slot) => doseForSlot(slot, "build-muscle", "3-plus", CLEAR_DOSE))
+      const { doses } = applyWeeklyVolumeCap(slots, rawDoses)
+      const summary = weeklySummary(slots, doses)
+      const schedule = buildWeeklySchedule(slots, doses, summary, weeklyDayBounds(summary).optimal, "build-muscle")
+      const scheduledIndexes = new Set(schedule.days.flatMap((day) => day.items.map((item) => item.slotIndex)))
+      doses.forEach((dose, index) => {
+        if (dose.kind !== "referral") {
+          assert.equal(scheduledIndexes.has(index), true, `${emphasis}/${slots[index].capacity} was omitted`)
+        }
+      })
+    }
+  })
+
+  it("places optional push, pull, squat and hamstring capacities in their real three-day lanes", () => {
+    for (const emphasis of ["running", "calisthenics"] as const) {
+      const slots = buildFoundation("home-gym", CLEAR, emphasis)
+      const rawDoses = slots.map((slot) => doseForSlot(slot, "build-muscle", "1-3", CLEAR_DOSE))
+      const { doses } = applyWeeklyVolumeCap(slots, rawDoses)
+      const summary = weeklySummary(slots, doses)
+      const schedule = buildWeeklySchedule(slots, doses, summary, weeklyDayBounds(summary).optimal, "build-muscle")
+      for (const [capacity, expectedLabel] of [
+        ["run_hamstring_resilience", "Lower"],
+        ["calisthenics_push", "Upper"],
+        ["calisthenics_pull", "Upper"],
+        ["calisthenics_squat", "Lower"],
+      ] as const) {
+        const index = slots.findIndex((slot) => slot.capacity === capacity)
+        if (index < 0) continue
+        const day = schedule.days.find((candidate) => candidate.items.some((item) => item.slotIndex === index))
+        assert.equal(day?.label, expectedLabel, `${capacity} should be on ${expectedLabel}`)
+      }
+    }
   })
 })

@@ -7,6 +7,7 @@ import { navyBodyFat } from "./lib/calc"
 import type { GoalState, NumericMetricId, Stage } from "./lib/flow"
 import { STAGES, bodyComplete, goalComplete, readinessSelectionAfterSexChange, safetyComplete } from "./lib/flow"
 import type { Intent } from "./lib/goals"
+import type { GoalKind, TrainingAge } from "./lib/goals"
 import type { ConditionId, HealthAnswers, ReadinessId } from "./lib/screening"
 import { SCOFF_QUESTIONS } from "./lib/screening"
 import { Intro } from "./steps/Intro"
@@ -36,6 +37,18 @@ function devJump(): Stage | null {
   return asked && (STAGES as string[]).includes(asked) ? (asked as Stage) : null
 }
 
+function devGoalSeed(): { kind: GoalKind; trainingAge: TrainingAge } {
+  if (!import.meta.env.DEV || typeof window === "undefined") return { kind: "lose-fat", trainingAge: "none" }
+  const params = new URLSearchParams(window.location.search)
+  const kind = params.get("goal")
+  const trainingAge = params.get("trainingAge")
+  return {
+    kind: kind === "build-muscle" || kind === "get-stronger" || kind === "stay-healthy" ? kind : "lose-fat",
+    trainingAge:
+      trainingAge === "under-1" || trainingAge === "1-3" || trainingAge === "3-plus" ? trainingAge : "none",
+  }
+}
+
 const SEED: Record<NumericMetricId, number> = {
   age: 27,
   height: 175,
@@ -47,6 +60,7 @@ const SEED: Record<NumericMetricId, number> = {
 
 export default function App() {
   const jump = devJump()
+  const goalSeed = devGoalSeed()
   const [stage, setStage] = useState<Stage>(jump ?? "intro")
 
   // Unanswered, not male. Sex changes the body-fat formula, the FFMI ceiling,
@@ -64,10 +78,10 @@ export default function App() {
   const [scoffNone, setScoffNone] = useState(!!jump)
 
   const [goal, setGoal] = useState<GoalState>({
-    kind: jump ? "lose-fat" : null,
+    kind: jump ? goalSeed.kind : null,
     targetWeightKg: jump ? 72 : null,
     weeks: jump ? 12 : null,
-    trainingAge: jump ? "none" : null,
+    trainingAge: jump ? goalSeed.trainingAge : null,
     place: jump ? "commercial-gym" : null,
   })
 

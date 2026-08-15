@@ -1,5 +1,6 @@
 import { MuscleView } from "../components/MuscleView"
 import { Help, Tape, Tiles } from "../components/controls"
+import { useState } from "react"
 import { Stage } from "../components/Stage"
 import { goalComplete, goalFields } from "../lib/flow"
 import type { GoalState } from "../lib/flow"
@@ -69,32 +70,37 @@ export function GoalStage({
   onBack: () => void
   onNext: () => void
 }) {
+  const [page, setPage] = useState<0 | 1 | 2>(0)
   const fields = goalFields(state.kind)
   const done = goalComplete(state)
+  const detailsDone =
+    (!fields.target || state.targetWeightKg !== null) &&
+    (!fields.timeline || state.weeks !== null) &&
+    (!fields.trainingAge || state.trainingAge !== null)
+  const pageDone = page === 0 ? state.kind !== null : page === 1 ? detailsDone : state.place !== null
 
-  const waiting = done
+  const waiting = pageDone
     ? null
-    : state.kind === null
+    : page === 0
       ? "Pick a goal"
-      : fields.target && state.targetWeightKg === null
+      : page === 1 && fields.target && state.targetWeightKg === null
         ? "Set a target weight"
-        : fields.timeline && state.weeks === null
+        : page === 1 && fields.timeline && state.weeks === null
           ? "Pick a timeline"
-          : fields.trainingAge && state.trainingAge === null
+          : page === 1 && fields.trainingAge && state.trainingAge === null
             ? "Say how long you have trained"
-            : state.place === null
-              ? "Say where you will train"
-              : null
+            : "Say where you will train"
 
   return (
     <Stage
       nodes={nodes}
       current="goal"
-      onBack={onBack}
-      onNext={onNext}
-      nextDisabled={!done}
-      nextLabel="See the read"
+      onBack={page === 0 ? onBack : () => setPage((page - 1) as 0 | 1 | 2)}
+      onNext={page === 2 ? onNext : () => setPage((page + 1) as 0 | 1 | 2)}
+      nextDisabled={!pageDone || (page === 2 && !done)}
+      nextLabel={page === 2 ? "See the read" : "Continue"}
       waiting={waiting}
+      substepLabel={`Goal ${page + 1} of 3 · ${page === 0 ? "Direction" : page === 1 ? "Details" : "Environment"}`}
       scene={(height) => (
         <>
           <MuscleView active={FULL_BODY} height={height} />
@@ -102,71 +108,76 @@ export function GoalStage({
         </>
       )}
     >
-      <Tiles
-        label="Your goal"
-        columns={2}
-        value={state.kind}
-        onChange={(kind) =>
-          onChange({
-            kind,
-            // Nothing is seeded into state here. The tape below opens on their
-            // own weight so it has somewhere to start, but a number the person
-            // never touched is not a target they set, and the flow will not
-            // move until they have.
-            targetWeightKg: goalFields(kind).target ? state.targetWeightKg : null,
-            weeks: goalFields(kind).timeline ? state.weeks : null,
-            trainingAge: goalFields(kind).trainingAge ? state.trainingAge : null,
-          })
-        }
-        options={GOALS}
-      />
-
-      {fields.target && (
-        <Tape
-          label="Target weight"
-          unit="kg"
-          min={30}
-          max={200}
-          value={state.targetWeightKg ?? Math.round(weightKg)}
-          onChange={(v) => onChange({ targetWeightKg: v })}
-          onTouch={() =>
-            onChange({ targetWeightKg: state.targetWeightKg ?? Math.round(weightKg) })
+      {page === 0 && (
+        <Tiles
+          label="Your goal"
+          columns={2}
+          value={state.kind}
+          onChange={(kind) =>
+            onChange({
+              kind,
+              targetWeightKg: goalFields(kind).target ? state.targetWeightKg : null,
+              weeks: goalFields(kind).timeline ? state.weeks : null,
+              trainingAge: goalFields(kind).trainingAge ? state.trainingAge : null,
+            })
           }
+          options={GOALS}
         />
       )}
 
-      {fields.timeline && (
-        <Tiles
-          label="By when"
-          columns={4}
-          compact
-          value={state.weeks === null ? null : String(state.weeks)}
-          onChange={(id) => onChange({ weeks: TIMELINES.find((t) => t.id === id)?.weeks ?? null })}
-          options={TIMELINES.map((t) => ({ id: t.id, label: t.label }))}
-        />
+      {page === 1 && (
+        <>
+          {fields.target && (
+            <Tape
+              label="Target weight"
+              unit="kg"
+              min={30}
+              max={200}
+              value={state.targetWeightKg ?? Math.round(weightKg)}
+              onChange={(v) => onChange({ targetWeightKg: v })}
+              onTouch={() =>
+                onChange({ targetWeightKg: state.targetWeightKg ?? Math.round(weightKg) })
+              }
+            />
+          )}
+          {fields.timeline && (
+            <Tiles
+              label="By when"
+              columns={4}
+              compact
+              value={state.weeks === null ? null : String(state.weeks)}
+              onChange={(id) => onChange({ weeks: TIMELINES.find((t) => t.id === id)?.weeks ?? null })}
+              options={TIMELINES.map((t) => ({ id: t.id, label: t.label }))}
+            />
+          )}
+          {fields.trainingAge && (
+            <Tiles
+              label="Trained for"
+              columns={2}
+              compact
+              value={state.trainingAge}
+              onChange={(trainingAge) => onChange({ trainingAge })}
+              options={TRAINING_AGES}
+            />
+          )}
+          {!fields.target && !fields.timeline && !fields.trainingAge && (
+            <p className="read-note">This goal needs no target number or timeline. Continue to choose the environment.</p>
+          )}
+        </>
       )}
 
-      {fields.trainingAge && (
+      {page === 2 && (
         <Tiles
-          label="Trained for"
+          label="Training environment"
           columns={2}
           compact
-          value={state.trainingAge}
-          onChange={(trainingAge) => onChange({ trainingAge })}
-          options={TRAINING_AGES}
+          value={state.place}
+          onChange={(place) => onChange({ place })}
+          options={PLACES}
         />
       )}
 
-      <Tiles
-        label="Training environment"
-        columns={2}
-        compact
-        value={state.place}
-        onChange={(place) => onChange({ place })}
-        options={PLACES}
-      />
-
-      <Help title="Why so few">
+      <Help title="Why this is asked">
         <p>
           Only what changes an answer is asked. A target weight and a timeline are the two halves of a rate,
           so they appear for fat loss and muscle gain and nowhere else. Training history only changes the

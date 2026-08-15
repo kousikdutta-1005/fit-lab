@@ -4,6 +4,7 @@ import { describe, it } from "node:test"
 import { BALANCE_OVERLAY_AGE, EMPHASIS_CAPACITIES, buildFoundation } from "../src/lib/foundation.ts"
 import type { SafetyContext } from "../src/lib/foundation.ts"
 import { EMPHASIS_SLOT_CAP, REQUIRED_CAPACITIES } from "../src/data/capacities.ts"
+import { SHIPPABLE_EXERCISES } from "../src/data/exercises.ts"
 import type { Place } from "../src/data/exercises.ts"
 
 const PLACES: Place[] = ["home-gym", "commercial-gym"]
@@ -113,6 +114,23 @@ describe("automatic foundation coverage", () => {
     const slots = buildFoundation("home-gym", ctx())
     const squat = slots.find((s) => s.capacity === "knee_extension")
     assert.equal(squat?.exercise.tier, "S")
+  })
+
+  it("always selects the highest shippable tier available for that capacity and environment", () => {
+    const score = { S: 2, A: 1, B: 0 } as const
+    for (const place of PLACES) {
+      for (const slot of buildFoundation(place, ctx())) {
+        const available = SHIPPABLE_EXERCISES.filter(
+          (exercise) => exercise.capacity === slot.capacity && exercise.environments.includes(place),
+        )
+        const highest = Math.max(...available.map((exercise) => score[exercise.tier]))
+        assert.equal(
+          score[slot.exercise.tier],
+          highest,
+          `${place}/${slot.capacity} selected Tier ${slot.exercise.tier} while a higher tier exists`,
+        )
+      }
+    }
   })
 
   it("adds floor_transfer only at/above the age-65 overlay, alongside balance, never below it", () => {
