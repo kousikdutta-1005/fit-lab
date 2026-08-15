@@ -1,0 +1,88 @@
+Body meshes
+===========
+
+base.glb (male)
+----------------
+
+Derived from "Male base mesh with muscle detail" by C.J..Goldman:
+https://sketchfab.com/3d-models/male-base-mesh-with-muscle-detail-244061a0323b4d2e9c60d9aba374c937
+
+Licence: CC-BY-4.0  http://creativecommons.org/licenses/by/4.0/
+Author must be credited. Commercial use is allowed.
+
+Required credit:
+This work is based on "Male base mesh with muscle detail"
+(https://sketchfab.com/3d-models/male-base-mesh-with-muscle-detail-244061a0323b4d2e9c60d9aba374c937)
+by C.J..Goldman (https://sketchfab.com/C.J..Goldman)
+licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+
+Male changes
+------------
+- Removed all textures. The material is generated at runtime.
+- Reoriented from Z-up to Y-up, centred horizontally, feet placed at y=0 and
+  height normalised to 1, so the runtime can work in stature fractions.
+- Measured the mesh's half-width and half-depth at 64 height slices. That
+  profile is written to src/data/body-profile.json and is what the runtime
+  deformation scales relative to.
+
+Rebuild with: node scripts/build-body.mjs <scene.gltf>
+
+
+base-female.glb (female)
+------------------------
+
+Generated from the MakeHuman Community hm08 base mesh and macro targets at
+repository commit a8bc2d54ff0ac92e78ff71431b1023eda42bf482.
+
+Author/project: MakeHuman Team (www.makehumancommunity.org).
+The source headers name original target author Manuel Bastioni and the CC0
+rights holders Data Collection AB, Joel Palmius and Jonas Hauquier.
+
+Base mesh:
+https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/3dobjs/base.obj
+SHA-256: 8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c
+
+Female-young macro targets, each applied at weight 1/3:
+https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/targets/macrodetails/african-female-young.target
+SHA-256: 92d61eeb3c164b421fd5a7c3537ee45e7e1a51de4d49bf312e19c3df2be1d8fc
+https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/targets/macrodetails/asian-female-young.target
+SHA-256: 095fe79694fa19e1fe98d93009ec116199bd524e081c640351a10eccf2cca1eb
+https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/makehuman/data/targets/macrodetails/caucasian-female-young.target
+SHA-256: 118379f6e8ba9266247fdb8788a20e1df40a239f97ced0b9905bcbcc74f6e820
+
+Licence: CC0 1.0 Universal. Commercial use and redistribution are permitted;
+attribution is not required. The project's authoritative licence explicitly
+includes "the base mesh and proxies" and "targets and modifiers":
+https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/LICENSE.md
+https://github.com/makehumancommunity/makehuman/blob/a8bc2d54ff0ac92e78ff71431b1023eda42bf482/LICENSE.ASSETS.md
+Official asset FAQ:
+https://static.makehumancommunity.org/makehuman/faq/are_makehuman_files_free.html
+
+Female changes
+--------------
+- Applied MakeHuman's sparse target deltas as
+  final = base + (african female young + asian female young +
+  caucasian female young) / 3. Equal weights produce the project's universal
+  young-adult female without making one ancestry the unspoken default.
+- Applied no muscle, weight, height or proportion extremes; those axes remain
+  at the neutral base mesh's default state.
+- Retained only the visible "body" face group. Joint and helper face groups
+  were omitted, matching MakeHuman's own export masking.
+- Converted the generated body-only OBJ to GLB with obj2gltf 3.2.0.
+- Removed textures and normalised to Y-up, feet at y=0, height=1 and horizontal
+  centre=(0,0), using scripts/build-body.mjs.
+- Wrote its independent 64-slice width/depth measurements to
+  src/data/body-profile-female.json.
+
+Rebuild:
+1. Download the pinned base and three pinned targets above.
+2. Run:
+   node scripts/apply-makehuman-targets.mjs <base.obj> <female.obj> \
+     <african.target>=0.3333333333333333 \
+     <asian.target>=0.3333333333333333 \
+     <caucasian.target>=0.3333333333333333
+3. Run: npx obj2gltf -i <female.obj> -o <female.glb> --binary
+4. Run: node scripts/build-body.mjs <female.glb> --name female
+
+The processed female GLB SHA-256 is
+685d3378567a0547cebd08dadfb7ed07087b7b242c3d2d58010266949ec2c64e.
