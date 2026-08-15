@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react"
 import type { ReactNode } from "react"
 import { NodeProgress } from "./controls"
 import type { GlyphName } from "./controls"
@@ -26,6 +27,7 @@ export function Stage({
   nextDisabled,
   nextLabel = "Continue",
   waiting,
+  substepLabel,
 }: {
   nodes: { id: string; label: string; glyph: GlyphName; done: boolean }[]
   current: string
@@ -38,8 +40,17 @@ export function Stage({
   nextLabel?: string
   /** What is still missing, said in as few words as it can be said. */
   waiting?: string | null
+  /** Optional intra-stage progress label; focused and scrolled into view whenever it changes. */
+  substepLabel?: string
 }) {
   const [sceneRef, sceneHeight] = useMeasuredHeight<HTMLDivElement>(320)
+  const substepHeading = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    if (!substepLabel) return
+    substepHeading.current?.closest(".tray-scroll")?.scrollTo({ top: 0 })
+    substepHeading.current?.focus()
+  }, [substepLabel])
 
   return (
     <div className={scene ? "stage" : "stage stage-list"}>
@@ -56,7 +67,14 @@ export function Stage({
         )}
 
         <div className="stage-tray">
-          <div className="tray-scroll">{children}</div>
+          <div className="tray-scroll">
+            {substepLabel && (
+              <p ref={substepHeading} className="substep-progress mono" role="heading" aria-level={2} tabIndex={-1}>
+                {substepLabel}
+              </p>
+            )}
+            {children}
+          </div>
           <div className="tray-nav">
             {/* Named for assistive tech, because "Back" is also a muscle and
                 two buttons called Back on one screen is a real ambiguity. */}

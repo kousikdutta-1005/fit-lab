@@ -1,16 +1,11 @@
 /**
  * The weekly day-wise schedule.
  *
- * Two things this module refuses to invent: it never changes how many sets
- * or how often an exercise is prescribed (that is `dose.ts`'s job, already
- * evidence-floored and ceilinged) and it never claims one specific number of
- * training days is uniquely correct. Instead it computes a safe range —
- * floor, a reasonable optimum, and ceiling — and lets the reader move inside
- * it, because frequency itself does not reliably change hypertrophy or
- * strength outcomes once weekly volume is held constant (Schoenfeld,
- * Grgic & Krieger 2019). What moving inside the range actually changes is
- * only how the same prescribed sessions and the same weekly aerobic minutes
- * are spread across the week.
+ * The dose engine owns sets, reps, rest, RIR and weekly volume. This module
+ * only places that prescription onto named days. Full-body foundations keep
+ * their existing per-session exposure; build-muscle foundations at 3+ days
+ * use repeated split lanes so every anatomy region is trained on at least two
+ * distinct days without changing its weekly set total.
  *
  * The floor is not editorial: it is the largest per-exercise weekly
  * frequency the dose engine has already prescribed (every full-body strength
@@ -20,6 +15,7 @@
 
 import type { FoundationSlot } from "./foundation.ts"
 import type { Dose, ResistanceDose, WeeklySummary } from "./dose.ts"
+import type { GoalKind } from "./goals.ts"
 
 export const SCHEDULE_SOURCE_IDS = [
   "who-2020-physical-activity",
@@ -104,10 +100,23 @@ function exerciseSecondsRange(dose: ResistanceDose): [number, number] {
 
 export type ScheduleDayKind = "strength" | "aerobic-only" | "rest"
 
+export type SplitKind = "full-body" | "upper-lower" | "push-pull-legs"
+
+export type ScheduleItem = {
+  slotIndex: number
+  exerciseId: string
+  kind: Exclude<Dose["kind"], "referral">
+  /** Sets performed on this day. In split mode this preserves the dose engine's exact weekly total. */
+  scheduledSets?: number
+  aerobicMinutes?: [number, number]
+}
+
 export type ScheduleDay = {
   /** 1-7, not tied to a calendar weekday: the reader places it on whichever real days fit their week. */
   dayNumber: number
   kind: ScheduleDayKind
+  label: string
+  items: ScheduleItem[]
   exerciseIds: string[]
   aerobicMinutes: [number, number]
   estimatedMinutes: [number, number]
@@ -116,66 +125,238 @@ export type ScheduleDay = {
 export type WeeklySchedule = {
   chosenDays: number
   bounds: DayBounds
+  split: SplitKind
   days: ScheduleDay[]
   sourceIds: readonly string[]
 }
 
+type SplitLane = "upper" | "lower" | "push" | "pull" | "legs" | "foundation"
+
+const UPPER_CAPACITIES = new Set([
+  "horizontal_push",
+  "vertical_push",
+  "horizontal_pull",
+  "vertical_pull",
+  "scapular_cuff",
+  "grip_carry",
+  "elbow_flexion",
+  "elbow_extension",
+  "calisthenics_push",
+  "calisthenics_pull",
+  "boxing_grip_forearm",
+])
+
+const LOWER_CAPACITIES = new Set([
+  "knee_extension",
+  "hip_hinge",
+  "knee_flexion",
+  "hip_ab_ad",
+  "calf_soleus",
+  "lumbar_extension",
+  "run_hamstring_resilience",
+  "calisthenics_squat",
+])
+
+const PUSH_CAPACITIES = new Set(["horizontal_push", "vertical_push", "elbow_extension", "calisthenics_push"])
+const PULL_CAPACITIES = new Set([
+  "horizontal_pull",
+  "vertical_pull",
+  "elbow_flexion",
+  "grip_carry",
+  "calisthenics_pull",
+  "boxing_grip_forearm",
+])
+const LEG_CAPACITIES = new Set([
+  "knee_extension",
+  "hip_hinge",
+  "knee_flexion",
+  "hip_ab_ad",
+  "calf_soleus",
+  "lumbar_extension",
+  "calisthenics_squat",
+  "run_hamstring_resilience",
+])
+
+function splitKindFor(goal: GoalKind, strengthDays: number): SplitKind {
+  if (goal !== "build-muscle" || strengthDays < 3) return "full-body"
+  return strengthDays >= 6 ? "push-pull-legs" : "upper-lower"
+}
+
+function laneFor(slot: FoundationSlot, split: SplitKind): SplitLane {
+  if (split === "upper-lower") {
+    if (UPPER_CAPACITIES.has(slot.capacity)) return "upper"
+    if (LOWER_CAPACITIES.has(slot.capacity)) return "lower"
+    return "foundation"
+  }
+  if (PUSH_CAPACITIES.has(slot.capacity)) return "push"
+  if (PULL_CAPACITIES.has(slot.capacity)) return "pull"
+  if (LEG_CAPACITIES.has(slot.capacity)) return "legs"
+  return "foundation"
+}
+
+function splitLabels(split: SplitKind, strengthDays: number): string[] {
+  if (split === "upper-lower" && strengthDays === 3) return ["Upper", "Lower", "Full body"]
+  if (split === "upper-lower") return ["Upper A", "Lower A", "Upper B", "Lower B"]
+  if (split === "push-pull-legs") {
+    return ["Push A", "Pull A", "Legs A", "Push B", "Pull B", "Legs B"]
+  }
+  return Array.from({ length: strengthDays }, () => "Full body")
+}
+
+function splitDayIndexes(lane: SplitLane, split: SplitKind, strengthDays: number): number[] {
+  if (split === "upper-lower" && strengthDays === 3) {
+    if (lane === "upper") return [0, 2]
+    if (lane === "lower") return [1, 2]
+    return [0, 1]
+  }
+  if (split === "upper-lower") {
+    if (lane === "upper") return [0, 2]
+    if (lane === "lower") return [1, 3]
+    return [0, 3]
+  }
+  if (lane === "push") return [0, 3]
+  if (lane === "pull") return [1, 4]
+  if (lane === "legs") return [2, 5]
+  return [0, 5]
+}
+
+function distributeSets(total: number, count: number): number[] {
+  const base = Math.floor(total / count)
+  const remainder = total % count
+  return Array.from({ length: count }, (_, index) => base + (index < remainder ? 1 : 0))
+}
+
 /**
- * Deterministic: the same slots/doses/chosenDays always produce the same
- * week. Every full-body strength exposure the dose engine prescribed keeps
- * its own frequency (a high-DOMS exercise capped at 2x/week still only
- * appears on 2 of the strength days, evenly spaced); only the total number
- * of training days and how aerobic minutes are spread across them move.
+ * Deterministic: the same slots/doses/goal/chosenDays always produce the same
+ * week. Full-body plans preserve per-exercise frequency. Split plans repeat
+ * each resistance capacity across two appropriate lanes and divide its exact
+ * weekly set total between them. Aerobic minutes remain spread across days.
  */
 export function buildWeeklySchedule(
   slots: FoundationSlot[],
   doses: Dose[],
   summary: WeeklySummary,
   chosenDaysInput: number,
+  goal: GoalKind = "stay-healthy",
 ): WeeklySchedule {
   const bounds = weeklyDayBounds(summary)
   const chosenDays = clampChosenDays(chosenDaysInput, bounds)
   const strengthDays = Math.max(summary.strengthSessionsPerWeek, 1)
+  const split = splitKindFor(goal, strengthDays)
   const { strength: strengthDayNumbers, aerobicOnly: aerobicOnlyDayNumbers } = buildDayNumbers(chosenDays, strengthDays)
 
-  const dayContent = new Map<number, { exerciseIds: string[]; seconds: [number, number] }>()
-  for (const d of strengthDayNumbers) dayContent.set(d, { exerciseIds: [], seconds: [WARMUP_SECONDS, WARMUP_SECONDS] })
-  for (const d of aerobicOnlyDayNumbers) dayContent.set(d, { exerciseIds: [], seconds: [0, 0] })
+  const dayContent = new Map<number, { label: string; items: ScheduleItem[]; seconds: [number, number] }>()
+  const labels = splitLabels(split, strengthDays)
+  strengthDayNumbers.forEach((d, index) => {
+    dayContent.set(d, {
+      label: labels[index] ?? "Full body",
+      items: [],
+      seconds: [WARMUP_SECONDS, WARMUP_SECONDS],
+    })
+  })
+  for (const d of aerobicOnlyDayNumbers) dayContent.set(d, { label: "Aerobic", items: [], seconds: [0, 0] })
 
   slots.forEach((slot, i) => {
     const dose = doses[i]
     if (dose.kind !== "resistance") return
+    if (split !== "full-body") {
+      const lane = laneFor(slot, split)
+      const assignedDays = splitDayIndexes(lane, split, strengthDays).map((index) => strengthDayNumbers[index])
+      const setDistribution = distributeSets(dose.sets * dose.sessionsPerWeek, assignedDays.length)
+      assignedDays.forEach((assignedDay, index) => {
+        const entry = dayContent.get(assignedDay)
+        if (!entry) return
+        const scheduledSets = setDistribution[index]
+        const [lo, hi] = exerciseSecondsRange({ ...dose, sets: scheduledSets })
+        entry.items.push({ slotIndex: i, exerciseId: slot.exercise.id, kind: "resistance", scheduledSets })
+        entry.seconds = [entry.seconds[0] + lo, entry.seconds[1] + hi]
+      })
+      return
+    }
     const frequency = Math.max(1, Math.min(dose.sessionsPerWeek, strengthDayNumbers.length))
     const assignedDays = subsetEvenly(strengthDayNumbers, frequency)
     const [lo, hi] = exerciseSecondsRange(dose)
     for (const d of assignedDays) {
       const entry = dayContent.get(d)
       if (!entry) continue
-      entry.exerciseIds.push(slot.exercise.id)
+      entry.items.push({ slotIndex: i, exerciseId: slot.exercise.id, kind: "resistance", scheduledSets: dose.sets })
       entry.seconds = [entry.seconds[0] + lo, entry.seconds[1] + hi]
     }
   })
 
   const allTrainingDays = [...strengthDayNumbers, ...aerobicOnlyDayNumbers].sort((a, b) => a - b)
-  const [aerobicLowTotal, aerobicHighTotal] = summary.aerobicMinutesPerWeek ?? [0, 0]
-  const perDayAerobicLow = allTrainingDays.length ? Math.round(aerobicLowTotal / allTrainingDays.length) : 0
-  const perDayAerobicHigh = allTrainingDays.length ? Math.round(aerobicHighTotal / allTrainingDays.length) : 0
+
+  doses.forEach((dose, slotIndex) => {
+    if (dose.kind === "aerobic") {
+      const frequency = Math.max(1, Math.min(dose.sessionsPerWeek, allTrainingDays.length))
+      const assignedDays = subsetEvenly(allTrainingDays, frequency)
+      const minutes: [number, number] = [
+        Math.round(dose.minutesPerWeek[0] / frequency),
+        Math.round(dose.minutesPerWeek[1] / frequency),
+      ]
+      for (const dayNumber of assignedDays) {
+        const entry = dayContent.get(dayNumber)
+        if (!entry) continue
+        entry.items.push({
+          slotIndex,
+          exerciseId: slots[slotIndex].exercise.id,
+          kind: "aerobic",
+          aerobicMinutes: minutes,
+        })
+      }
+      return
+    }
+    if (dose.kind === "interval") {
+      const frequency = Math.max(1, Math.min(dose.sessionsPerWeek, allTrainingDays.length))
+      for (const dayNumber of subsetEvenly(allTrainingDays, frequency)) {
+        const entry = dayContent.get(dayNumber)
+        if (!entry) continue
+        entry.items.push({ slotIndex, exerciseId: slots[slotIndex].exercise.id, kind: "interval" })
+        entry.seconds = [
+          entry.seconds[0] + dose.rounds[0] * dose.workSeconds[0],
+          entry.seconds[1] + dose.rounds[1] * dose.workSeconds[1],
+        ]
+      }
+    }
+  })
 
   const days: ScheduleDay[] = []
   for (let dayNumber = 1; dayNumber <= 7; dayNumber++) {
     const entry = dayContent.get(dayNumber)
     if (!entry) {
-      days.push({ dayNumber, kind: "rest", exerciseIds: [], aerobicMinutes: [0, 0], estimatedMinutes: [0, 0] })
+      days.push({
+        dayNumber,
+        kind: "rest",
+        label: "Rest",
+        items: [],
+        exerciseIds: [],
+        aerobicMinutes: [0, 0],
+        estimatedMinutes: [0, 0],
+      })
       continue
     }
     const kind: ScheduleDayKind = strengthDayNumbers.includes(dayNumber) ? "strength" : "aerobic-only"
-    const aerobicMinutes: [number, number] = [perDayAerobicLow, perDayAerobicHigh]
+    const aerobicMinutes = entry.items.reduce<[number, number]>(
+      (total, item) => [
+        total[0] + (item.aerobicMinutes?.[0] ?? 0),
+        total[1] + (item.aerobicMinutes?.[1] ?? 0),
+      ],
+      [0, 0],
+    )
     const estimatedMinutes: [number, number] = [
       Math.round((entry.seconds[0] + aerobicMinutes[0] * 60) / 60),
       Math.round((entry.seconds[1] + aerobicMinutes[1] * 60) / 60),
     ]
-    days.push({ dayNumber, kind, exerciseIds: entry.exerciseIds, aerobicMinutes, estimatedMinutes })
+    days.push({
+      dayNumber,
+      kind,
+      label: entry.label,
+      items: entry.items,
+      exerciseIds: entry.items.filter((item) => item.kind === "resistance").map((item) => item.exerciseId),
+      aerobicMinutes,
+      estimatedMinutes,
+    })
   }
 
-  return { chosenDays, bounds, days, sourceIds: SCHEDULE_SOURCE_IDS }
+  return { chosenDays, bounds, split, days, sourceIds: SCHEDULE_SOURCE_IDS }
 }

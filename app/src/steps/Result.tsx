@@ -3,6 +3,7 @@ import { Callout, Disclosure, ExternalLink, Kicker } from "../components/ui"
 import { SourcesPanel } from "../components/SourcesPanel"
 import { BodyView } from "../components/BodyView"
 import { MuscleView } from "../components/MuscleView"
+import { WeeklyChecklist } from "../components/WeeklyChecklist"
 import { Glyph, Tiles } from "../components/controls"
 import { ThemeToggle } from "../components/ThemeToggle"
 import { DEFAULT_MUSCLE, defaultShoulderRatio, figureLabel } from "../lib/figure"
@@ -28,7 +29,6 @@ import { assess } from "../lib/goals"
 import type { HealthAnswers } from "../lib/screening"
 import { notesDefaultOpen, screen } from "../lib/screening"
 import type { Place } from "../data/exercises"
-import { exerciseById } from "../data/exercises"
 import { capacityById } from "../data/capacities"
 import type { Emphasis } from "../data/capacities"
 import { EMPHASES } from "../data/capacities"
@@ -153,7 +153,7 @@ export function Result({
   const summary = weeklySummary(slots, doses)
   const dayBounds = weeklyDayBounds(summary)
   const chosenDays = clampChosenDays(chosenDaysOverride ?? dayBounds.optimal, dayBounds)
-  const schedule: WeeklySchedule = buildWeeklySchedule(slots, doses, summary, chosenDays)
+  const schedule: WeeklySchedule = buildWeeklySchedule(slots, doses, summary, chosenDays, intent.kind)
   const fullBody = Array.from(
     new Set(
       slots
@@ -242,7 +242,7 @@ export function Result({
               muscle: DEFAULT_MUSCLE,
               bodyFat: bfMid ?? 22,
             }}
-            height={330}
+            height={260}
             label={figureLabel({
               heightCm: profile.heightCm,
               weightKg: profile.weightKg,
@@ -257,11 +257,12 @@ export function Result({
       </section>
 
       <section className="read-section">
-        <div className="section-head">
-          <Glyph name="target" size={16} />
-          <h2 className="section-title">Where you stand</h2>
-        </div>
-        <div className="gauges">
+        <Disclosure title="Detailed measurements and percentiles" hint="Gauges, comparison detail and uncertainty">
+          <div className="section-head">
+            <Glyph name="target" size={16} />
+            <h2 className="section-title">Where you stand</h2>
+          </div>
+          <div className="gauges" style={{ marginTop: "0.7rem" }}>
           <Gauge
             label="BMI"
             value={round(value)}
@@ -353,7 +354,8 @@ export function Result({
               caption={`Natural trainees cluster below about ${ceiling}. That figure rests on 74 athletes measured in 1995, so read it as a signpost and not a wall.`}
             />
           )}
-        </div>
+          </div>
+        </Disclosure>
       </section>
 
       {verdict.flags.length > 0 && (
@@ -373,21 +375,16 @@ export function Result({
         </div>
 
         <p className="read-note">
-          The app chose complete movement coverage automatically — you never pick a muscle. Your environment
-          only changes which variant of each pattern is shown. Every card below has a verified technique
-          guide and a starting dose; the full evidence behind each is in{" "}
-          <a href="#sources-and-methods">Sources &amp; methods</a>.
+          Each day is a usable checklist. Every movement keeps its evidence-set weekly volume, and every item
+          puts the verified how-to guide beside the dose rather than behind an explanation. Full evidence stays
+          in <a href="#sources-and-methods">Sources &amp; methods</a>.
+        </p>
+        <p className="read-note">
+          S-tier is always preferred. A labelled A/B item appears only where that required capacity and
+          environment have no shippable S-tier option; silently dropping it would leave a real coverage gap.
         </p>
 
-        <div className="card evidence">
-          <MuscleView active={fullBody} height={300} />
-          <p className="scene-strip mono">Lit: the concrete movement patterns in this week's foundation</p>
-        </div>
-
-        <div className="card" style={{ padding: "0.95rem 1.05rem" }}>
-          <h3 className="pick-title" style={{ marginTop: 0 }}>
-            Weekly summary
-          </h3>
+        <Disclosure title="Weekly summary" hint="Dose totals and the conservative starting range">
           <div className="chipstrip">
             <ValueChip label="Strength sessions/week" value={String(summary.strengthSessionsPerWeek)} />
             <ValueChip label="Weekly resistance sets" value={String(summary.totalWeeklySets)} />
@@ -406,7 +403,7 @@ export function Result({
               {regionNotes.join(" ")}
             </p>
           )}
-        </div>
+        </Disclosure>
 
         <div className="card" style={{ padding: "0.95rem 1.05rem" }}>
           <h3 className="pick-title" style={{ marginTop: 0 }}>
@@ -448,91 +445,56 @@ export function Result({
             )}
           </div>
 
-          <div className="picks" style={{ marginTop: "0.7rem" }}>
-            {schedule.days.map((day) => (
-              <div key={day.dayNumber} className="card" style={{ padding: "0.65rem 0.8rem" }}>
-                <div className="chipstrip" style={{ marginBottom: day.kind === "rest" ? 0 : "0.3rem" }}>
-                  <span className="tapcard-title">Day {day.dayNumber}</span>
-                  <ValueChip
-                    label="Type"
-                    value={
-                      day.kind === "rest"
-                        ? "Rest"
-                        : day.kind === "strength"
-                          ? "Full-body strength"
-                          : "Aerobic only"
-                    }
-                  />
-                  {day.kind !== "rest" && (
-                    <ValueChip label="~min" value={`${day.estimatedMinutes[0]}–${day.estimatedMinutes[1]}`} />
-                  )}
-                </div>
-                {day.kind === "strength" && (
-                  <p className="why-body" style={{ marginBottom: 0 }}>
-                    {day.exerciseIds.length} exercise{day.exerciseIds.length === 1 ? "" : "s"}
-                    {day.aerobicMinutes[1] > 0 ? ` plus ${day.aerobicMinutes[0]}–${day.aerobicMinutes[1]} min aerobic` : ""}:{" "}
-                    {day.exerciseIds.map((id) => exerciseById(id)?.name ?? id).join(", ")}
-                  </p>
-                )}
-                {day.kind === "aerobic-only" && (
-                  <p className="why-body" style={{ marginBottom: 0 }}>
-                    {day.aerobicMinutes[0]}–{day.aerobicMinutes[1]} min aerobic base, spread here instead of stacked
-                    onto a lifting day.
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+          <WeeklyChecklist schedule={schedule} slots={slots} doses={doses} />
           <Disclosure title="How the week and the per-session time were worked out">
             <p className="why-body">
-              Every exercise keeps the exact weekly frequency prescribed in its own dose card below — a
-              high-soreness exercise capped at 2x/week still only appears on 2 of the strength days, evenly
-              spaced, however many total days you choose. Frequency itself does not reliably change hypertrophy
-              or strength once weekly sets are held constant (Schoenfeld, Grgic &amp; Krieger 2019), which is
-              why the range above is safe to move inside rather than fixed at one number. Aerobic minutes are
-              WHO 2020-guideline totals spread evenly across however many training days you pick, rather than
-              concentrated into one or two. The per-session minute range is a rough estimate — sets × reps at
-              an average tempo, plus the prescribed rest and a fixed warm-up and changeover allowance — not a
-              measured time; real sessions vary with load-changing, coaching and how the person just performing
-              actually feels.
+              At two resistance sessions the full foundation remains full-body. At three, Upper and Lower are
+              followed by a Full-body day. At four, Upper and Lower each repeat. That guarantees at least two
+              weekly exposures for every rendered anatomy region; a four-day PPL cannot do that, so PPL is
+              reserved for a future six-session dose. The dose engine is unchanged: weekly sets are divided
+              between the two appropriate days with the same rep range, rest and RIR. Aerobic minutes remain
+              the WHO 2020-guideline total spread across training days. The time range is an engineering
+              estimate, not a measured promise.
             </p>
           </Disclosure>
         </div>
 
-        <div className="section-head" style={{ marginTop: "1.2rem" }}>
-          <h3 className="pick-title" style={{ margin: 0 }}>
-            Optional emphasis
-          </h3>
-        </div>
-        <p className="read-note">
-          One tap only. The default below is the full foundation with no extra inference. Each emphasis adds
-          at most a few clearly optional, explicitly-scoped extra slots — it never replaces the foundation.
-        </p>
-        <div className="chipstrip" role="group" aria-label="Optional emphasis">
-          {EMPHASES.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              className={`btn tap ${emphasis === e.id ? "btn-active" : "btn-quiet"}`}
-              aria-pressed={emphasis === e.id}
-              onClick={() => setEmphasis(e.id)}
-              title={e.plain}
-            >
-              {e.label}
-            </button>
-          ))}
-        </div>
+        <Disclosure title="Exercise detail and optional emphasis" hint="Why each item is here, progression and equipment">
+          <div className="card evidence" style={{ marginBottom: "0.9rem" }}>
+            <MuscleView active={fullBody} height={220} />
+            <p className="scene-strip mono">Lit: the movement patterns in this week's foundation</p>
+          </div>
+          <div className="section-head">
+            <h3 className="pick-title" style={{ margin: 0 }}>Optional emphasis</h3>
+          </div>
+          <p className="read-note">
+            One tap only. The default is the complete foundation with no extra inference. An emphasis adds at
+            most a few explicitly optional slots and never replaces the foundation.
+          </p>
+          <div className="chipstrip" role="group" aria-label="Optional emphasis">
+            {EMPHASES.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                className={`btn tap ${emphasis === e.id ? "btn-active" : "btn-quiet"}`}
+                aria-pressed={emphasis === e.id}
+                onClick={() => setEmphasis(e.id)}
+                title={e.plain}
+              >
+                {e.label}
+              </button>
+            ))}
+          </div>
+          <div className="picks" style={{ marginTop: "0.8rem" }}>
+            <FoundationGroup title="Foundation" slots={requiredSlots} doses={doses} slotAll={slots} />
+            {optionalSlots.length > 0 && (
+              <FoundationGroup title="Optional emphasis additions" slots={optionalSlots} doses={doses} slotAll={slots} />
+            )}
+          </div>
 
-        <div className="picks">
-          <FoundationGroup title="Foundation" slots={requiredSlots} doses={doses} slotAll={slots} />
-          {optionalSlots.length > 0 && (
-            <FoundationGroup title="Optional emphasis additions" slots={optionalSlots} doses={doses} slotAll={slots} />
-          )}
-        </div>
-
-        {place === "home-gym" && (
-          <div className="read-section">
-            <h3 className="pick-title">What to buy, in order</h3>
+          {place === "home-gym" && (
+            <div className="read-section" style={{ marginTop: "1rem" }}>
+              <h3 className="pick-title">What to buy, in order</h3>
             <p className="read-note">
               Generic and vendor-free, in the order that unlocks the most of the foundation above per rupee
               spent.
@@ -571,8 +533,9 @@ export function Result({
                 ))}
               </ul>
             </Disclosure>
-          </div>
-        )}
+            </div>
+          )}
+        </Disclosure>
       </section>
 
       <section className="read-section notes">
@@ -635,17 +598,15 @@ export function Result({
         </Disclosure>
       </section>
 
-      <section className="read-section">
-        <div className="section-head">
-          <Glyph name="target" size={16} />
-          <h2 className="section-title">Sources &amp; methods</h2>
-        </div>
-        <p className="read-note">
-          How fit-lab knows this. Every formula, threshold, safety rule, exercise pick and dose above resolves
-          to a source here — guideline, trial, meta-analysis, observational association, biomechanical
-          inference, or an explicitly labelled editorial/product judgement.
-        </p>
-        <SourcesPanel sources={SOURCES} guides={GUIDES} />
+      <section className="read-section" id="sources-and-methods">
+        <Disclosure title="Sources & methods" hint="Every formula, threshold, safety rule, guide and dose">
+          <p className="read-note">
+            Every formula, threshold, safety rule, exercise pick and dose resolves to a source here — guideline,
+            trial, meta-analysis, observational association, biomechanical inference, or an explicitly labelled
+            editorial/product judgement.
+          </p>
+          <SourcesPanel sources={SOURCES} guides={GUIDES} />
+        </Disclosure>
       </section>
 
       <div className="read-actions">

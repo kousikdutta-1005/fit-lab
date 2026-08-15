@@ -1,4 +1,5 @@
 import { Help, Glyph, TapCard } from "../components/controls"
+import { useState } from "react"
 import type { ReactNode } from "react"
 import { Stage } from "../components/Stage"
 import type { Sex } from "../lib/calc"
@@ -74,6 +75,7 @@ export function SafetyStage({
   onBack: () => void
   onNext: () => void
 }) {
+  const [page, setPage] = useState<"health" | "food">("health")
   const items = readinessItems(sex)
   const readinessGroup: GroupState = { selected: flags.length, none: flagsNone }
   const foodGroup: GroupState = { selected: scoff.length, none: scoffNone }
@@ -100,113 +102,121 @@ export function SafetyStage({
     if (next.length > 0) onScoffNone(false)
   }
 
-  const waiting = done
-    ? null
-    : !groupAnswered(readinessGroup)
-      ? "Answer the health group to continue"
-      : "Answer the food group to continue"
+  const pageDone = page === "health" ? groupAnswered(readinessGroup) : groupAnswered(foodGroup)
+  const waiting = pageDone ? null : `Answer the ${page} group to continue`
 
   return (
     <Stage
       nodes={nodes}
       current="safety"
-      onBack={onBack}
-      onNext={onNext}
-      nextDisabled={!done}
+      onBack={page === "health" ? onBack : () => setPage("health")}
+      onNext={page === "health" ? () => setPage("food") : onNext}
+      nextDisabled={!pageDone || (page === "food" && !done)}
+      nextLabel={page === "health" ? "Continue to food" : "Continue to goal"}
       waiting={waiting}
+      substepLabel={`Safety ${page === "health" ? "1" : "2"} of 2 · ${page === "health" ? "Health" : "Food"}`}
     >
-      <Group
-        title="Health"
-        glyph="shield"
-        answered={groupAnswered(readinessGroup)}
-        prompt="Tap anything that applies."
-      >
-        {items.map((item) => (
-          <TapCard
-            key={item.id}
-            on={flags.includes(item.id)}
-            onToggle={() => toggleFlag(item.id)}
-            title={item.short}
-            detail={item.question}
-            glyph={READINESS_GLYPH[item.id]}
-          />
-        ))}
-        <TapCard
-          on={flagsNone}
-          tone="clear"
-          title="None of these apply"
-          onToggle={() => {
-            const next = !flagsNone
-            onFlagsNone(next)
-            if (next) {
-              onFlags([])
-              onConditions([])
-            }
-          }}
-        />
-      </Group>
-
-      {available.length > 0 && (
-        <Group title="Which one" glyph="clipboard" answered={false} prompt="Optional. It changes the advice, not the answer.">
-          {CONDITIONS.filter((c) => available.includes(c.id)).map((c) => (
+      {page === "health" ? (
+        <>
+          <Group
+            title="Health"
+            glyph="shield"
+            answered={groupAnswered(readinessGroup)}
+            prompt="Tap anything that applies."
+          >
+            {items.map((item) => (
+              <TapCard
+                key={item.id}
+                on={flags.includes(item.id)}
+                onToggle={() => toggleFlag(item.id)}
+                title={item.short}
+                detail={item.question}
+                glyph={READINESS_GLYPH[item.id]}
+              />
+            ))}
             <TapCard
-              key={c.id}
-              on={conditions.includes(c.id)}
-              onToggle={() =>
-                onConditions(
-                  conditions.includes(c.id)
-                    ? conditions.filter((x) => x !== c.id)
-                    : [...conditions, c.id],
-                )
-              }
-              title={c.label}
+              on={flagsNone}
+              tone="clear"
+              title="None of these apply"
+              onToggle={() => {
+                const next = !flagsNone
+                onFlagsNone(next)
+                if (next) {
+                  onFlags([])
+                  onConditions([])
+                }
+              }}
             />
-          ))}
-        </Group>
+          </Group>
+
+          {available.length > 0 && (
+            <Group title="Which one" glyph="clipboard" answered={false} prompt="Optional. It changes the advice, not the answer.">
+              {CONDITIONS.filter((c) => available.includes(c.id)).map((c) => (
+                <TapCard
+                  key={c.id}
+                  on={conditions.includes(c.id)}
+                  onToggle={() =>
+                    onConditions(
+                      conditions.includes(c.id)
+                        ? conditions.filter((x) => x !== c.id)
+                        : [...conditions, c.id],
+                    )
+                  }
+                  title={c.label}
+                />
+              ))}
+            </Group>
+          )}
+          <Help title="Why we ask about health">
+            <p>
+              This is the PAR-Q+ framework with the 2015 ACSM revision. The old blanket
+              &ldquo;see a doctor before any exercise&rdquo; line referred so many people that it deterred
+              exercise. Most people tick nothing and carry straight on.
+            </p>
+            <p>Nothing here is stored or sent anywhere. Screening is not a diagnosis.</p>
+          </Help>
+        </>
+      ) : (
+        <>
+          <Group
+            title="Food"
+            glyph="plate"
+            answered={groupAnswered(foodGroup)}
+            prompt="Tap anything that applies."
+          >
+            {SCOFF_QUESTIONS.map((q, i) => (
+              <TapCard
+                key={q}
+                on={scoff.includes(i)}
+                onToggle={() => toggleScoff(i)}
+                title={SCOFF_TAGS[i]}
+                detail={q}
+              />
+            ))}
+            <TapCard
+              on={scoffNone}
+              tone="clear"
+              title="None of these apply"
+              onToggle={() => {
+                const next = !scoffNone
+                onScoffNone(next)
+                if (next) onScoff([])
+              }}
+            />
+          </Group>
+          <Help title="Why we ask about food">
+            <p>
+              This is SCOFF (Morgan, Reid &amp; Lacey, <em>BMJ</em> 1999). A product that shows a
+              body-fat estimate and target weight can do real damage to the wrong person, so this gate comes
+              before any goal.
+            </p>
+            <p>
+              Its published accuracy comes from clinical settings, not this one. It is a prompt, never a
+              diagnosis, and nothing is stored or sent.
+            </p>
+          </Help>
+        </>
       )}
-
-      <Group
-        title="Food"
-        glyph="plate"
-        answered={groupAnswered(foodGroup)}
-        prompt="Tap anything that applies."
-      >
-        {SCOFF_QUESTIONS.map((q, i) => (
-          <TapCard
-            key={q}
-            on={scoff.includes(i)}
-            onToggle={() => toggleScoff(i)}
-            title={SCOFF_TAGS[i]}
-            detail={q}
-          />
-        ))}
-        <TapCard
-          on={scoffNone}
-          tone="clear"
-          title="None of these apply"
-          onToggle={() => {
-            const next = !scoffNone
-            onScoffNone(next)
-            if (next) onScoff([])
-          }}
-        />
-      </Group>
-
-      <Help title="Why we ask">
-        <p>
-          The health group is the PAR-Q+ framework with the 2015 ACSM revision. That revision matters: the
-          old blanket &ldquo;see a doctor before any exercise&rdquo; line referred so many people that it
-          deterred exercise, and deterring exercise costs more health than it saves. Most people tick
-          nothing and carry straight on.
-        </p>
-        <p>
-          The food group is SCOFF (Morgan, Reid &amp; Lacey, <em>BMJ</em> 1999). It is here because a
-          product that hands you a body fat estimate and a target weight can do real damage to the wrong
-          person, and it should at least ask. Its published accuracy comes from clinical settings, which is
-          not where this runs, so it is a prompt and never a diagnosis.
-        </p>
-        <p>Neither group is stored or sent anywhere. Nothing here is a diagnosis.</p>
-      </Help>
     </Stage>
   )
 }

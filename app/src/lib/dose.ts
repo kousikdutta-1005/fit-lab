@@ -114,7 +114,7 @@ function restForGoal(goal: GoalKind, compound: boolean): [number, number] {
   return compound ? [90, 150] : [60, 90]
 }
 
-function sessionsPerWeekForGoal(goal: GoalKind, trainingAge: TrainingAge | undefined): number {
+export function sessionsPerWeekForGoal(goal: GoalKind, trainingAge: TrainingAge | undefined): number {
   if (goal === "stay-healthy") return 2
   if (goal === "lose-fat") return 3
   if (goal === "get-stronger") return 3

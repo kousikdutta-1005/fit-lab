@@ -15,15 +15,15 @@ There are three moments where you give it anything, and the rule for all three i
 
 1. **The body.** Sex at birth, age, height, weight, waist, neck, and hip for women because that is the only place the formula uses it. A tape measure, not a smart scale. The figure holds the screen and answers each reading as you set it. Nothing is filled in for you: sex starts unanswered, and until you answer it the figure is a plain outline labelled as an illustration, because both base meshes are sexed and drawing one at you would be a guess. Every tape opens on a starting number, and that number only becomes your answer once you have actually moved it.
 2. **Safety.** Physical readiness before any goal, and a screen for disordered eating before any body-composition target. Both gates come before the assessment, not after it. Two groups of tick-what-applies cards, each of which has to be closed explicitly: an untouched group is never recorded as a no. Change your sex afterwards and the health group goes back to unanswered, because "none of these apply" was said about a list that did not contain the pregnancy question. Ticking a bone or joint problem offers knee and back pain; ticking a long-term condition offers the medical list; taking either back withdraws whatever it offered. Every note the screen produces is an instruction, so it is shown open on the result rather than folded.
-3. **The goal.** Conditional on the goal itself. A target weight and a timeline appear for fat loss and muscle gain, because together they are a rate; training history appears for muscle gain, because that is the one place it changes the rate; training environment appears for everybody, because it selects viable variants. There are exactly two environments: a home gym with a defined minimum kit, and a full commercial gym. The app chooses complete full-body movement coverage; the user does not choose muscles.
+3. **The goal.** Conditional on the goal itself. A target weight and a timeline appear for fat loss and muscle gain, because together they are a rate; training history appears for muscle gain, because that is the one place it changes the rate; training environment appears for everybody, because it selects viable variants. There are exactly two environments: a home gym with a defined minimum kit, and a full commercial gym. The app chooses complete movement coverage; the user does not choose muscles.
 
-Then the read: whether the goal is reachable and how long it honestly takes, where every number places you against 71,543 measured adults, and the current full-body foundation shown on real anatomy. The exercise catalogue in this structural layer is provisional and will be replaced by the evidence layer.
+Then the read: whether the goal is reachable and how long it honestly takes, where every number places you against 71,543 measured adults, and the current foundation as a day-labelled checklist. Muscle-gain plans remain full-body at two resistance sessions, use Upper/Lower/Full body at three, and repeat Upper/Lower at four. This guarantees at least two weekly exposures for every rendered anatomy region; a four-day PPL cannot. The split only groups the existing one-exercise-per-capacity foundation; dose math, safety filtering, environment filtering, and verified-guide requirements do not change.
 
 **Asked for, and then removed.** A photo step, a character creator with skin, hair and facial hair, sliders asking you to guess your own shoulder width and muscle mass, and a ten-question personality inventory. None of them changed a number on the result page. The shortest honest description of that flow is that it asked for twenty-eight things in order to use nine. Ancestry survives as an optional refinement offered *after* the read, next to the two thresholds it actually moves.
 
 ## What it is not
 
-fit-lab is an assessment, not a programme generator. It will not tell you what to lift on Tuesday.
+fit-lab is an assessment with a deterministic starting foundation, not an adaptive programme generator. Its weekly checklist makes the evidence-set dose usable, but it does not periodise training blocks, pick loads, or claim to know how you recovered.
 
 That is a decision, not a gap. As a programme it competes with Fitbod and Freeletics on scheduling logic. As an honest read on a person it competes with nobody. The programme layer may come later, once the assessment has earned the trust to deserve one.
 
@@ -120,7 +120,7 @@ The figure has no skin tone and no hair, and that is deliberate rather than unfi
 
 - It does not diagnose. Screening is not diagnosis.
 - It does not sell anything. No supplements, no coaching, no premium tier, no affiliate links.
-- It does not upload, store or transmit anything. There is no account, no server call, and no photo, because it never asks for one.
+- It does not upload or transmit anything. There is no account, no server call, and no photo. Body, safety and goal answers are not stored; only the theme and today's completed checklist items may persist in local browser storage.
 - It does not promise a timeline the evidence cannot support.
 - It does not present a guess as a measurement, which is why it stopped asking you to guess your own shoulder width and muscle mass.
 - It does not adjust anything by ancestry that the evidence does not support.
