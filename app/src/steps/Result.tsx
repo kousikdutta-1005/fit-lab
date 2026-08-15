@@ -27,6 +27,7 @@ import { assess } from "../lib/goals"
 import type { HealthAnswers } from "../lib/screening"
 import { notesDefaultOpen, screen } from "../lib/screening"
 import type { Place } from "../data/exercises"
+import { exerciseById } from "../data/exercises"
 import { capacityById } from "../data/capacities"
 import type { Emphasis } from "../data/capacities"
 import { EMPHASES } from "../data/capacities"
@@ -34,6 +35,8 @@ import type { FoundationSlot, SafetyContext } from "../lib/foundation"
 import { buildFoundation } from "../lib/foundation"
 import type { Dose } from "../lib/dose"
 import { applyWeeklyVolumeCap, doseForSlot, weeklySummary } from "../lib/dose"
+import type { WeeklySchedule } from "../lib/schedule"
+import { buildWeeklySchedule, clampChosenDays, weeklyDayBounds } from "../lib/schedule"
 import { HOME_CEILINGS, HOME_KIT } from "../data/kit"
 import { GUIDES, SOURCES, guideById } from "../data/evidence"
 
@@ -92,6 +95,7 @@ export function Result({
 }) {
   const scr = screen(profile, health)
   const [emphasis, setEmphasis] = useState<Emphasis>("general")
+  const [chosenDaysOverride, setChosenDaysOverride] = useState<number | null>(null)
 
   if (scr.kind === "stop") {
     return (
@@ -146,6 +150,9 @@ export function Result({
   )
   const { doses, regionNotes } = applyWeeklyVolumeCap(slots, rawDoses)
   const summary = weeklySummary(slots, doses)
+  const dayBounds = weeklyDayBounds(summary)
+  const chosenDays = clampChosenDays(chosenDaysOverride ?? dayBounds.optimal, dayBounds)
+  const schedule: WeeklySchedule = buildWeeklySchedule(slots, doses, summary, chosenDays)
   const fullBody = Array.from(
     new Set(
       slots
@@ -395,6 +402,97 @@ export function Result({
               {regionNotes.join(" ")}
             </p>
           )}
+        </div>
+
+        <div className="card" style={{ padding: "0.95rem 1.05rem" }}>
+          <h3 className="pick-title" style={{ marginTop: 0 }}>
+            Your training week
+          </h3>
+          <p className="read-note" style={{ marginTop: 0 }}>
+            {dayBounds.min === dayBounds.max
+              ? `${dayBounds.min} day${dayBounds.min === 1 ? "" : "s"} a week delivers this in full — that number is fixed by what's prescribed below, not a choice.`
+              : `Anywhere from ${dayBounds.min} to ${dayBounds.max} days a week delivers the same prescription in full; ${dayBounds.optimal} is the evidence-consistent default. Training frequency itself does not reliably change results once the weekly sets and minutes below stay the same — moving the slider only changes how they're spread across the week.`}
+          </p>
+          <div className="chipstrip" role="group" aria-label="Training days per week">
+            <button
+              type="button"
+              className="btn btn-quiet tap"
+              aria-label="Fewer training days per week"
+              disabled={chosenDays <= dayBounds.min}
+              onClick={() => setChosenDaysOverride(clampChosenDays(chosenDays - 1, dayBounds))}
+            >
+              −
+            </button>
+            <ValueChip label="Days/week" value={String(chosenDays)} />
+            <button
+              type="button"
+              className="btn btn-quiet tap"
+              aria-label="More training days per week"
+              disabled={chosenDays >= dayBounds.max}
+              onClick={() => setChosenDaysOverride(clampChosenDays(chosenDays + 1, dayBounds))}
+            >
+              +
+            </button>
+            {chosenDays !== dayBounds.optimal && (
+              <button
+                type="button"
+                className="btn btn-quiet tap"
+                onClick={() => setChosenDaysOverride(null)}
+              >
+                Reset to {dayBounds.optimal}
+              </button>
+            )}
+          </div>
+
+          <div className="picks" style={{ marginTop: "0.7rem" }}>
+            {schedule.days.map((day) => (
+              <div key={day.dayNumber} className="card" style={{ padding: "0.65rem 0.8rem" }}>
+                <div className="chipstrip" style={{ marginBottom: day.kind === "rest" ? 0 : "0.3rem" }}>
+                  <span className="tapcard-title">Day {day.dayNumber}</span>
+                  <ValueChip
+                    label="Type"
+                    value={
+                      day.kind === "rest"
+                        ? "Rest"
+                        : day.kind === "strength"
+                          ? "Full-body strength"
+                          : "Aerobic only"
+                    }
+                  />
+                  {day.kind !== "rest" && (
+                    <ValueChip label="~min" value={`${day.estimatedMinutes[0]}–${day.estimatedMinutes[1]}`} />
+                  )}
+                </div>
+                {day.kind === "strength" && (
+                  <p className="why-body" style={{ marginBottom: 0 }}>
+                    {day.exerciseIds.length} exercise{day.exerciseIds.length === 1 ? "" : "s"}
+                    {day.aerobicMinutes[1] > 0 ? ` plus ${day.aerobicMinutes[0]}–${day.aerobicMinutes[1]} min aerobic` : ""}:{" "}
+                    {day.exerciseIds.map((id) => exerciseById(id)?.name ?? id).join(", ")}
+                  </p>
+                )}
+                {day.kind === "aerobic-only" && (
+                  <p className="why-body" style={{ marginBottom: 0 }}>
+                    {day.aerobicMinutes[0]}–{day.aerobicMinutes[1]} min aerobic base, spread here instead of stacked
+                    onto a lifting day.
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          <Disclosure title="How the week and the per-session time were worked out">
+            <p className="why-body">
+              Every exercise keeps the exact weekly frequency prescribed in its own dose card below — a
+              high-soreness exercise capped at 2x/week still only appears on 2 of the strength days, evenly
+              spaced, however many total days you choose. Frequency itself does not reliably change hypertrophy
+              or strength once weekly sets are held constant (Schoenfeld, Grgic &amp; Krieger 2019), which is
+              why the range above is safe to move inside rather than fixed at one number. Aerobic minutes are
+              WHO 2020-guideline totals spread evenly across however many training days you pick, rather than
+              concentrated into one or two. The per-session minute range is a rough estimate — sets × reps at
+              an average tempo, plus the prescribed rest and a fixed warm-up and changeover allowance — not a
+              measured time; real sessions vary with load-changing, coaching and how the person just performing
+              actually feels.
+            </p>
+          </Disclosure>
         </div>
 
         <div className="section-head" style={{ marginTop: "1.2rem" }}>

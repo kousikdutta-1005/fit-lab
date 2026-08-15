@@ -247,6 +247,18 @@ export const SOURCES: Source[] = [
     limitation: "Discussion-level narrative synthesis of a meta-regression, not the full graded table.",
   },
   {
+    id: "schoenfeld-2019-frequency-meta",
+    title: "How many times per week should a muscle be trained to maximize muscle hypertrophy? A systematic review and meta-analysis of studies examining the effects of resistance training frequency",
+    org: "Schoenfeld BJ, Grgic J, Krieger JW, J Sports Sci",
+    kind: "meta_analysis",
+    year: 2019,
+    ref: "https://doi.org/10.1080/02640414.2018.1555906",
+    accessed: "2026-08-15",
+    group: "movement",
+    claim: "Training frequency does not meaningfully change hypertrophy once weekly volume is held equal — the basis for letting weekly training days flex between the evidence-set floor and ceiling without changing total prescribed sets or per-exercise frequency.",
+    limitation: "25 studies, mostly untrained/recreationally trained lifters; a modest frequency-favouring effect appears only in non-volume-equated comparisons.",
+  },
+  {
     id: "lauersen-2018-general-strength",
     title: "Strength training as superior, dose-dependent and safe prevention of acute and overuse sports injuries",
     org: "Lauersen JB et al., Br J Sports Med",
