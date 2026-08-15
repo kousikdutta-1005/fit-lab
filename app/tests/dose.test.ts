@@ -6,6 +6,7 @@ import {
   WEEKLY_SETS_PER_MUSCLE_CAP,
   applyWeeklyVolumeCap,
   doseForSlot,
+  sessionsPerWeekForGoal,
   weeklySummary,
 } from "../src/lib/dose.ts"
 import type { Dose, ResistanceDose, SafetyDoseContext } from "../src/lib/dose.ts"
@@ -66,6 +67,22 @@ describe("goal-specific dosage", () => {
     const advanced = doseForSlot(slot, "build-muscle", "3-plus", CLEAR) as ResistanceDose
     assert.equal(novice.sets <= intermediate.sets, true)
     assert.equal(intermediate.sets <= advanced.sets, true)
+  })
+
+  it("separates training days from per-exercise frequency so split exercises stay at two exposures", () => {
+    const slot = slotFor("squat-home")
+    const expectedTrainingDays: Record<TrainingAge, number> = {
+      none: 2,
+      "under-1": 2,
+      "1-3": 3,
+      "3-plus": 4,
+    }
+    for (const trainingAge of TRAINING_AGES) {
+      const dose = doseForSlot(slot, "build-muscle", trainingAge, CLEAR) as ResistanceDose
+      assert.equal(sessionsPerWeekForGoal("build-muscle", trainingAge), expectedTrainingDays[trainingAge])
+      assert.equal(dose.sessionsPerWeek, 2)
+      assert.equal(dose.sets <= 4, true)
+    }
   })
 
   it("never requires training to failure and always attaches the double-progression rule", () => {

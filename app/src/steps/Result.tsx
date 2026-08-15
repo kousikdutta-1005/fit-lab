@@ -35,7 +35,7 @@ import { EMPHASES } from "../data/capacities"
 import type { FoundationSlot, SafetyContext } from "../lib/foundation"
 import { buildFoundation } from "../lib/foundation"
 import type { Dose } from "../lib/dose"
-import { applyWeeklyVolumeCap, doseForSlot, weeklySummary } from "../lib/dose"
+import { applyWeeklyVolumeCap, doseForSlot, sessionsPerWeekForGoal, weeklySummary } from "../lib/dose"
 import type { WeeklySchedule } from "../lib/schedule"
 import { buildWeeklySchedule, clampChosenDays, weeklyDayBounds } from "../lib/schedule"
 import { HOME_CEILINGS, HOME_KIT } from "../data/kit"
@@ -150,7 +150,7 @@ export function Result({
     doseForSlot(slot, intent.kind, intent.trainingAge, { screenKind: scr.kind, age: profile.age }),
   )
   const { doses, regionNotes } = applyWeeklyVolumeCap(slots, rawDoses)
-  const summary = weeklySummary(slots, doses)
+  const summary = weeklySummary(slots, doses, sessionsPerWeekForGoal(intent.kind, intent.trainingAge))
   const dayBounds = weeklyDayBounds(summary)
   const chosenDays = clampChosenDays(chosenDaysOverride ?? dayBounds.optimal, dayBounds)
   const schedule: WeeklySchedule = buildWeeklySchedule(slots, doses, summary, chosenDays, intent.kind)

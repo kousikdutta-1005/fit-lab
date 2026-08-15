@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert"
 import { describe, it } from "node:test"
 
-import { applyWeeklyVolumeCap, doseForSlot, weeklySummary } from "../src/lib/dose.ts"
+import { applyWeeklyVolumeCap, doseForSlot, sessionsPerWeekForGoal, weeklySummary } from "../src/lib/dose.ts"
 import type { SafetyDoseContext } from "../src/lib/dose.ts"
 import { buildFoundation } from "../src/lib/foundation.ts"
 import type { FoundationSlot, SafetyContext } from "../src/lib/foundation.ts"
@@ -36,7 +36,7 @@ function scheduleFor(
   const slots: FoundationSlot[] = buildFoundation(place, ctx, "general")
   const rawDoses = slots.map((slot) => doseForSlot(slot, goal, trainingAge, doseCtx))
   const { doses } = applyWeeklyVolumeCap(slots, rawDoses)
-  const summary = weeklySummary(slots, doses)
+  const summary = weeklySummary(slots, doses, sessionsPerWeekForGoal(goal, trainingAge))
   const bounds = weeklyDayBounds(summary)
   const schedule = buildWeeklySchedule(slots, doses, summary, chosenDays ?? bounds.optimal, goal)
   return { slots, doses, summary, bounds, schedule }
@@ -313,6 +313,13 @@ describe("buildWeeklySchedule", () => {
           if (dose.kind !== "resistance") return
           const items = schedule.days.flatMap((day) => day.items).filter((item) => item.slotIndex === index)
           const scheduledSets = items.reduce((sum, item) => sum + (item.scheduledSets ?? 0), 0)
+          for (const item of items) {
+            assert.equal(
+              (item.scheduledSets ?? 0) <= dose.sets,
+              true,
+              `${place}/${trainingAge}/${slot.capacity} has too many sets in one workout`,
+            )
+          }
           assert.equal(
             scheduledSets,
             dose.sets * dose.sessionsPerWeek,
@@ -353,7 +360,7 @@ describe("buildWeeklySchedule", () => {
       const slots = buildFoundation("home-gym", CLEAR, emphasis)
       const rawDoses = slots.map((slot) => doseForSlot(slot, "build-muscle", "3-plus", CLEAR_DOSE))
       const { doses } = applyWeeklyVolumeCap(slots, rawDoses)
-      const summary = weeklySummary(slots, doses)
+      const summary = weeklySummary(slots, doses, sessionsPerWeekForGoal("build-muscle", "3-plus"))
       const schedule = buildWeeklySchedule(slots, doses, summary, weeklyDayBounds(summary).optimal, "build-muscle")
       const scheduledIndexes = new Set(schedule.days.flatMap((day) => day.items.map((item) => item.slotIndex)))
       doses.forEach((dose, index) => {
@@ -369,7 +376,7 @@ describe("buildWeeklySchedule", () => {
       const slots = buildFoundation("home-gym", CLEAR, emphasis)
       const rawDoses = slots.map((slot) => doseForSlot(slot, "build-muscle", "1-3", CLEAR_DOSE))
       const { doses } = applyWeeklyVolumeCap(slots, rawDoses)
-      const summary = weeklySummary(slots, doses)
+      const summary = weeklySummary(slots, doses, sessionsPerWeekForGoal("build-muscle", "1-3"))
       const schedule = buildWeeklySchedule(slots, doses, summary, weeklyDayBounds(summary).optimal, "build-muscle")
       for (const [capacity, expectedLabel] of [
         ["run_hamstring_resilience", "Lower"],
