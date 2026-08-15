@@ -10,8 +10,11 @@ import {
 } from "../src/lib/dose.ts"
 import type { Dose, ResistanceDose, SafetyDoseContext } from "../src/lib/dose.ts"
 import { buildFoundation } from "../src/lib/foundation.ts"
-import type { FoundationSlot } from "../src/lib/foundation.ts"
+import type { FoundationSlot, SafetyContext } from "../src/lib/foundation.ts"
 import { exerciseById } from "../src/data/exercises.ts"
+import type { Place } from "../src/data/exercises.ts"
+import { capacityById } from "../src/data/capacities.ts"
+import type { MuscleId } from "../src/data/exercises.ts"
 import type { GoalKind, TrainingAge } from "../src/lib/goals.ts"
 
 const CLEAR: SafetyDoseContext = { screenKind: "clear", age: 30 }
@@ -199,5 +202,88 @@ describe("weekly volume budget and deduplication", () => {
       return weeklySummary(slots, doses)
     }
     assert.deepEqual(build(), build())
+  })
+})
+
+describe("build-muscle weekly per-region hypertrophy volume", () => {
+  const CTX: SafetyContext = { screenKind: "clear", conditions: [], jointProblem: false, pregnant: false, age: 30 }
+  const PLACES: Place[] = ["home-gym", "commercial-gym"]
+
+  function perRegionWeekly(place: Place, trainingAge: TrainingAge | undefined) {
+    const slots = buildFoundation(place, CTX, "general")
+    const rawDoses = slots.map((s) => doseForSlot(s, "build-muscle", trainingAge, CLEAR))
+    const { doses } = applyWeeklyVolumeCap(slots, rawDoses)
+    const byRegion = new Map<MuscleId, { weekly: number; anyHighDoms: boolean }>()
+    slots.forEach((s, i) => {
+      const d = doses[i]
+      if (d.kind !== "resistance") return
+      const anatomy = capacityById(s.capacity).anatomy
+      if (!anatomy) return
+      const entry = byRegion.get(anatomy) ?? { weekly: 0, anyHighDoms: false }
+      entry.weekly += d.sets * d.sessionsPerWeek
+      entry.anyHighDoms = entry.anyHighDoms || s.exercise.highDoms === true
+      byRegion.set(anatomy, entry)
+    })
+    return byRegion
+  }
+
+  it("lands every non-high-DOMS region's weekly volume in a real hypertrophy range (>= 6 sets/week), not the bare maintenance floor, for every training age and environment", () => {
+    for (const place of PLACES) {
+      for (const trainingAge of ["none", "under-1", "1-3", "3-plus"] as TrainingAge[]) {
+        const byRegion = perRegionWeekly(place, trainingAge)
+        for (const [region, entry] of byRegion) {
+          if (entry.anyHighDoms) continue // documented ramp exception: high-DOMS work starts low on purpose
+          assert.equal(
+            entry.weekly >= 6,
+            true,
+            `${place}/${trainingAge}/${region}: expected >=6 weekly sets, got ${entry.weekly}`,
+          )
+        }
+      }
+    }
+  })
+
+  it("increases (or holds) a single-exercise region's weekly volume monotonically as training age increases (the direct, undeduplicated read of the fix)", () => {
+    for (const place of PLACES) {
+      const none = perRegionWeekly(place, "none").get("quads")!.weekly
+      const oneToThree = perRegionWeekly(place, "1-3").get("quads")!.weekly
+      const threePlus = perRegionWeekly(place, "3-plus").get("quads")!.weekly
+      assert.equal(none <= oneToThree, true, `${place}/quads: none -> 1-3 should not decrease`)
+      assert.equal(oneToThree <= threePlus, true, `${place}/quads: 1-3 -> 3-plus should not decrease`)
+    }
+  })
+
+  it("gives a true beginner (none/under-1) noticeably more than the bare 4-sets/week ACSM maintenance floor for a single-exercise region", () => {
+    // quads is fed by exactly one capacity (knee_extension) in every environment, so its
+    // weekly total is a direct read of the fix: sets-for-goal x sessions-for-goal.
+    for (const place of PLACES) {
+      for (const trainingAge of ["none", "under-1"] as TrainingAge[]) {
+        const byRegion = perRegionWeekly(place, trainingAge)
+        const quads = byRegion.get("quads")
+        assert.notEqual(quads, undefined)
+        assert.equal(quads!.weekly >= 6, true)
+        assert.equal(quads!.weekly <= 8, true)
+      }
+    }
+  })
+
+  it("leaves stay-healthy resistance volume exactly at the ACSM maintenance floor (unchanged by the build-muscle fix)", () => {
+    const slot: FoundationSlot = { capacity: "knee_extension", exercise: exerciseById("squat-home")!, optional: false }
+    for (const trainingAge of ["none", "under-1", "1-3", "3-plus", undefined] as (TrainingAge | undefined)[]) {
+      const dose = doseForSlot(slot, "stay-healthy", trainingAge, CLEAR) as ResistanceDose
+      assert.equal(dose.sets, SETS_PER_EXERCISE_FLOOR)
+      assert.equal(dose.sessionsPerWeek, 2)
+    }
+  })
+
+  it("leaves lose-fat resistance volume unchanged by the build-muscle fix (compound 3 sets, isolation floor, 3 sessions/week)", () => {
+    const compoundSlot: FoundationSlot = { capacity: "knee_extension", exercise: exerciseById("squat-home")!, optional: false }
+    const isolationSlot: FoundationSlot = { capacity: "calf_soleus", exercise: exerciseById("calf-raise-home")!, optional: false }
+    const compound = doseForSlot(compoundSlot, "lose-fat", "3-plus", CLEAR) as ResistanceDose
+    const isolation = doseForSlot(isolationSlot, "lose-fat", "3-plus", CLEAR) as ResistanceDose
+    assert.equal(compound.sets, 3)
+    assert.equal(isolation.sets, SETS_PER_EXERCISE_FLOOR)
+    assert.equal(compound.sessionsPerWeek, 3)
+    assert.equal(isolation.sessionsPerWeek, 3)
   })
 })

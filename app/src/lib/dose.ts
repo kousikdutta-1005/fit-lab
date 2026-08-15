@@ -94,11 +94,19 @@ function setsForGoal(goal: GoalKind, compound: boolean, trainingAge: TrainingAge
   if (goal === "stay-healthy") return SETS_PER_EXERCISE_FLOOR
   if (goal === "lose-fat") return compound ? 3 : SETS_PER_EXERCISE_FLOOR
   if (goal === "get-stronger") return compound ? 3 : SETS_PER_EXERCISE_FLOOR
-  // build-muscle: training-age-scaled, per ACSM 2026 volume guards
+  // build-muscle: training-age-scaled, per ACSM 2026 volume guards and the
+  // Schoenfeld 2017 dose-response meta-analysis (~+0.37% hypertrophy per set,
+  // trending up toward ~10 sets/week per muscle before plateauing). Combined
+  // with sessionsPerWeekForGoal below, this is tuned so a single exercise's
+  // weekly volume (sets x sessions/week) lands in a real hypertrophy working
+  // range rather than the bare ACSM maintenance floor: ~6-8 sets/week for a
+  // true beginner, ~10-14 for 1-3y trained, ~14-18 for 3+y trained -- all
+  // still under WEEKLY_SETS_PER_MUSCLE_CAP so overlapping-capacity regions
+  // (e.g. back) still get deduplicated rather than stacked further.
   const age = trainingAge ?? "none"
-  if (age === "none" || age === "under-1") return compound ? 2 : 2
-  if (age === "1-3") return compound ? 3 : 3
-  return compound ? 4 : 3 // "3-plus"
+  if (age === "none" || age === "under-1") return compound ? 4 : 3
+  if (age === "1-3") return 4
+  return 4 // "3-plus"
 }
 
 function restForGoal(goal: GoalKind, compound: boolean): [number, number] {
